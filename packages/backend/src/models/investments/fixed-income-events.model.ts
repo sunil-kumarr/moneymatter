@@ -65,6 +65,17 @@ export default class FixedIncomeEvents extends Model {
   })
   cashFlowMode!: FIXED_INCOME_CASH_FLOW_MODE;
 
+  /**
+   * Whether this event flushes accrued-but-unpaid interest and resets the
+   * compounding clock at its eventDate. Defaults to true (the historical
+   * behavior for every event type). Set to false for a recorded interest
+   * credit that didn't verifiably reach cash the user controls — e.g. an
+   * internal bank sweep to an unrelated account — so it stays in the ledger
+   * for history without cutting off continuous compounding through that date.
+   */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: true })
+  resetsAccrualClock!: boolean;
+
   @Column({ type: DataType.TEXT, allowNull: true })
   notes!: string | null;
 

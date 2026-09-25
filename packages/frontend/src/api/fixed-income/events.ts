@@ -13,6 +13,7 @@ interface CreateFixedIncomeEventPayload {
   interestComponent?: string | null;
   currencyCode: string;
   cashFlowMode?: FIXED_INCOME_CASH_FLOW_MODE;
+  resetsAccrualClock?: boolean;
   transactionIds?: string[];
   notes?: string | null;
 }
@@ -20,7 +21,7 @@ interface CreateFixedIncomeEventPayload {
 type UpdateFixedIncomeEventPayload = Partial<
   Pick<
     CreateFixedIncomeEventPayload,
-    'eventDate' | 'grossAmount' | 'principalComponent' | 'interestComponent' | 'notes'
+    'eventDate' | 'grossAmount' | 'principalComponent' | 'interestComponent' | 'resetsAccrualClock' | 'notes'
   >
 >;
 

@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const portfolioId = toRef(() => props.portfolio.id);
 const { data: summary, isLoading: isSummaryLoading } = usePortfolioSummary(portfolioId);
-const { formatCompactAmount, formatAmountByCurrencyCode } = useFormatCurrency();
+const { formatCompactAmountLakhs, formatAmountByCurrencyCode } = useFormatCurrency();
 
 const totalValue = computed(() => (summary.value ? Number(summary.value.totalPortfolioValue) : null));
 const currencyCode = computed(() => summary.value?.currencyCode ?? 'USD');
@@ -60,7 +60,7 @@ const portfolioIcon = computed(() => {
           :content="formatAmountByCurrencyCode(totalValue, currencyCode)"
         >
           <span class="text-amount text-muted-foreground shrink-0 text-sm">
-            {{ formatCompactAmount(totalValue, currencyCode) }}
+            {{ formatCompactAmountLakhs(totalValue, currencyCode) }}
           </span>
         </DesktopOnlyTooltip>
       </div>

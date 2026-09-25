@@ -21,7 +21,7 @@ const props = defineProps<{
   textClass?: string;
 }>();
 
-const { formatCompactAmount, formatAmountByCurrencyCode } = useFormatCurrency();
+const { formatCompactAmountLakhs, formatAmountByCurrencyCode } = useFormatCurrency();
 
 // Below half a cent the amount renders as "0.00" — a total that carries no information,
 // so the row stays clean instead of showing "≈$0.00" for empty or netted-out groups.
@@ -29,7 +29,7 @@ const ZERO_DISPLAY_EPSILON = 0.005;
 const isZero = computed(() => Math.abs(props.amount) < ZERO_DISPLAY_EPSILON);
 
 const prefix = computed(() => (props.isApprox ? '≈ ' : ''));
-const compact = computed(() => `${prefix.value}${formatCompactAmount(props.amount, props.currencyCode)}`);
+const compact = computed(() => `${prefix.value}${formatCompactAmountLakhs(props.amount, props.currencyCode)}`);
 const full = computed(() => `${prefix.value}${formatAmountByCurrencyCode(props.amount, props.currencyCode)}`);
 </script>
 

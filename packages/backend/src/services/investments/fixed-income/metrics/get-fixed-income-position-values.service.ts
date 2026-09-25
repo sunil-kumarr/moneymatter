@@ -16,6 +16,11 @@ export interface FixedIncomePositionValue {
   currencyCode: string;
   currentValue: string;
   costBasis: string;
+  // realizedGain + unrealizedGain === currentValue + principalReturnedToDate +
+  // totalInterestReceived - costBasis (the same total-gain formula getFixedIncomePositionMetrics
+  // uses). realizedGain is interest that actually reached cash the user controls.
+  realizedGain: string;
+  unrealizedGain: string;
 }
 
 export const getFixedIncomePositionValues = async ({
@@ -36,7 +41,13 @@ export const getFixedIncomePositionValues = async ({
     const events = position.events ?? [];
     const costBasis = computeCostBasis({ position, events });
 
-    const { principalOutstanding, accruedUnpaidInterest } = computeAccruedInterest({
+    const {
+      principalOutstanding,
+      principalReturnedToDate,
+      accruedUnpaidInterest,
+      totalInterestReceived,
+      realizedInterestReceived,
+    } = computeAccruedInterest({
       principal: position.principal.toDecimalString(10),
       interestRatePct: position.interestRatePct,
       compoundingFrequency: position.compoundingFrequency,
@@ -50,11 +61,25 @@ export const getFixedIncomePositionValues = async ({
       ? '0'
       : new Big(principalOutstanding).plus(accruedUnpaidInterest).toFixed(10);
 
+    // Same total-gain formula as getFixedIncomePositionMetrics: currentValue only holds
+    // principal still in the position plus interest still accruing, so interest and
+    // principal already paid out (totalInterestReceived / principalReturnedToDate) must be
+    // added back in here or they vanish from the portfolio-level gain entirely.
+    const totalGain = new Big(currentValue)
+      .plus(principalReturnedToDate)
+      .plus(totalInterestReceived)
+      .minus(costBasis)
+      .toFixed(10);
+    const realizedGain = new Big(realizedInterestReceived).toFixed(10);
+    const unrealizedGain = new Big(totalGain).minus(realizedGain).toFixed(10);
+
     return {
       positionId: position.id,
       currencyCode: position.currencyCode,
       currentValue,
       costBasis,
+      realizedGain,
+      unrealizedGain,
     };
   });
 };

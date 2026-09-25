@@ -46,7 +46,7 @@ const props = defineProps<{
 
 const portfolioId = toRef(props, 'portfolioId');
 const { data: summary, isLoading } = usePortfolioSummary(portfolioId);
-const { formatCompactAmount } = useFormatCurrency();
+const { formatCompactAmountLakhs } = useFormatCurrency();
 
 const hasValue = computed(
   () => summary.value && summary.value.totalPortfolioValue !== undefined && summary.value.totalPortfolioValue !== null,
@@ -57,7 +57,7 @@ const findUserCurrency = (currencyCode: string) =>
 
 const formatCurrency = ({ amount, currencyCode }: { amount: number; currencyCode: string }) => {
   const userCurrency = findUserCurrency(currencyCode);
-  return formatCompactAmount(amount, userCurrency?.currencyCode ?? currencyCode);
+  return formatCompactAmountLakhs(amount, userCurrency?.currencyCode ?? currencyCode);
 };
 
 const formattedValue = computed(() => {

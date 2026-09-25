@@ -20,6 +20,7 @@ interface CreateFixedIncomeEventParams {
   interestComponent?: string | null;
   currencyCode: string;
   cashFlowMode?: FIXED_INCOME_CASH_FLOW_MODE;
+  resetsAccrualClock?: boolean;
   transactionIds?: string[];
   notes?: string | null;
 }
@@ -35,6 +36,7 @@ const createFixedIncomeEventImpl = async (params: CreateFixedIncomeEventParams) 
     interestComponent = null,
     currencyCode,
     cashFlowMode = FIXED_INCOME_CASH_FLOW_MODE.none,
+    resetsAccrualClock = true,
     transactionIds = [],
     notes = null,
   } = params;
@@ -80,6 +82,7 @@ const createFixedIncomeEventImpl = async (params: CreateFixedIncomeEventParams) 
     principalReturnedThisEvent,
     currencyCode,
     cashFlowMode,
+    resetsAccrualClock,
     notes,
   });
 

@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const dealId = toRef(() => props.deal.id);
 const { data: metrics, isLoading: isMetricsLoading } = useVentureDealMetrics(dealId);
-const { formatCompactAmount, formatAmountByCurrencyCode } = useFormatCurrency();
+const { formatCompactAmountLakhs, formatAmountByCurrencyCode } = useFormatCurrency();
 
 const currentValue = computed(() => (metrics.value ? Number(metrics.value.currentValue) : null));
 </script>
@@ -39,7 +39,7 @@ const currentValue = computed(() => (metrics.value ? Number(metrics.value.curren
           :content="formatAmountByCurrencyCode(currentValue, deal.currencyCode)"
         >
           <span class="text-amount text-muted-foreground shrink-0 text-sm">
-            {{ formatCompactAmount(currentValue, deal.currencyCode) }}
+            {{ formatCompactAmountLakhs(currentValue, deal.currencyCode) }}
           </span>
         </DesktopOnlyTooltip>
       </div>

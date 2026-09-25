@@ -3,6 +3,7 @@ import ResponsiveAlertDialog from '@/components/common/responsive-alert-dialog.v
 import ResponsiveDialog from '@/components/common/responsive-dialog.vue';
 import FixedIncomeEventForm from '@/components/forms/fixed-income-event-form.vue';
 import { Button } from '@/components/lib/ui/button';
+import { DesktopOnlyTooltip } from '@/components/lib/ui/tooltip';
 import { NotificationType, useNotificationCenter } from '@/components/notification-center';
 import { useDeleteFixedIncomeEvent, useFixedIncomePositionEvents } from '@/composable/data-queries/fixed-income/events';
 import { useFormatCurrency } from '@/composable/formatters';
@@ -13,7 +14,7 @@ import {
   type FixedIncomeEventModel,
   type FixedIncomePositionModel,
 } from '@bt/shared/types/investments';
-import { PlusIcon, Trash2Icon } from '@lucide/vue';
+import { ArrowDownLeftIcon, ArrowUpRightIcon, HistoryIcon, PlusIcon, Trash2Icon } from '@lucide/vue';
 import { format } from 'date-fns';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -41,6 +42,25 @@ const EVENT_TYPE_LABELS: Record<FIXED_INCOME_EVENT_TYPE, string> = {
   [FIXED_INCOME_EVENT_TYPE.maturity]: 'Maturity',
   [FIXED_INCOME_EVENT_TYPE.writedown]: 'Writedown',
   [FIXED_INCOME_EVENT_TYPE.fee]: 'Fee',
+};
+
+// 'credit' = cash flowing out of the position to the user (interest/principal paid
+// out); 'debit' = cash flowing into the position (funding it) or a recognized loss.
+type EventDirection = 'credit' | 'debit';
+
+const EVENT_TYPE_DIRECTION: Record<FIXED_INCOME_EVENT_TYPE, EventDirection> = {
+  [FIXED_INCOME_EVENT_TYPE.initial_investment]: 'debit',
+  [FIXED_INCOME_EVENT_TYPE.interest_accrual_payout]: 'credit',
+  [FIXED_INCOME_EVENT_TYPE.partial_repayment]: 'credit',
+  [FIXED_INCOME_EVENT_TYPE.full_repayment]: 'credit',
+  [FIXED_INCOME_EVENT_TYPE.maturity]: 'credit',
+  [FIXED_INCOME_EVENT_TYPE.writedown]: 'debit',
+  [FIXED_INCOME_EVENT_TYPE.fee]: 'debit',
+};
+
+const DIRECTION_COLOR_CLASS: Record<EventDirection, string> = {
+  credit: 'text-app-income-color',
+  debit: 'text-app-expense-color',
 };
 
 const parseApiDate = (s: string): Date => {
@@ -112,9 +132,28 @@ const onEventSaved = () => {
         <tbody class="divide-border divide-y">
           <tr v-for="event in sortedEvents" :key="event.id" class="hover:bg-muted/30 transition-colors">
             <td class="px-3 py-2 whitespace-nowrap">{{ formatEventDate(event.eventDate) }}</td>
-            <td class="px-3 py-2">{{ EVENT_TYPE_LABELS[event.type] }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">
-              {{ event.grossAmount ? formatAmountByCurrencyCode(Number(event.grossAmount), event.currencyCode) : '—' }}
+            <td class="px-3 py-2">
+              <div class="flex items-center gap-1.5" :class="DIRECTION_COLOR_CLASS[EVENT_TYPE_DIRECTION[event.type]]">
+                <ArrowDownLeftIcon v-if="EVENT_TYPE_DIRECTION[event.type] === 'credit'" class="size-3.5 shrink-0" />
+                <ArrowUpRightIcon v-else class="size-3.5 shrink-0" />
+                <span class="text-foreground">{{ EVENT_TYPE_LABELS[event.type] }}</span>
+                <DesktopOnlyTooltip
+                  v-if="!event.resetsAccrualClock"
+                  content="History only — doesn't reset the accrual clock; interest keeps compounding through this date"
+                >
+                  <HistoryIcon class="text-muted-foreground size-3.5 shrink-0" />
+                </DesktopOnlyTooltip>
+              </div>
+            </td>
+            <td
+              class="px-3 py-2 text-right tabular-nums"
+              :class="DIRECTION_COLOR_CLASS[EVENT_TYPE_DIRECTION[event.type]]"
+            >
+              <template v-if="event.grossAmount">
+                {{ EVENT_TYPE_DIRECTION[event.type] === 'credit' ? '+' : '−' }}
+                {{ formatAmountByCurrencyCode(Number(event.grossAmount), event.currencyCode) }}
+              </template>
+              <span v-else class="text-muted-foreground">—</span>
             </td>
             <td class="text-muted-foreground max-w-50 truncate px-3 py-2">{{ event.notes ?? '' }}</td>
             <td class="px-3 py-2 text-right">

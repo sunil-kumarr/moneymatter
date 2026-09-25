@@ -3,6 +3,7 @@ import DateField from '@/components/fields/date-field.vue';
 import FieldLabel from '@/components/fields/components/field-label.vue';
 import InputField from '@/components/fields/input-field.vue';
 import TextareaField from '@/components/fields/textarea-field.vue';
+import { Checkbox } from '@/components/lib/ui/checkbox';
 import UiButton from '@/components/lib/ui/button/Button.vue';
 import * as Select from '@/components/lib/ui/select';
 import { getErrorMessage } from '@/common/utils/error-message';
@@ -56,6 +57,7 @@ const form = reactive({
   grossAmount: '',
   principalComponent: '',
   interestComponent: '',
+  resetsAccrualClock: true,
   notes: '',
 });
 
@@ -63,6 +65,7 @@ const formatApiDate = (d: Date): string => format(d, 'yyyy-MM-dd');
 
 // A writedown records a loss with no cash movement, so it never carries an amount.
 const isWritedown = computed(() => form.type === FIXED_INCOME_EVENT_TYPE.writedown);
+const isInterestAccrualPayout = computed(() => form.type === FIXED_INCOME_EVENT_TYPE.interest_accrual_payout);
 
 const isFormValid = computed(
   () =>
@@ -86,6 +89,7 @@ const onSubmit = async () => {
         principalComponent: form.principalComponent || null,
         interestComponent: form.interestComponent || null,
         cashFlowMode: FIXED_INCOME_CASH_FLOW_MODE.out_of_wallet,
+        resetsAccrualClock: isInterestAccrualPayout.value ? form.resetsAccrualClock : undefined,
         notes: form.notes || null,
       },
     });
@@ -143,6 +147,18 @@ const onSubmit = async () => {
         :disabled="isPending"
       />
     </div>
+
+    <label v-if="isInterestAccrualPayout" class="flex items-start gap-2 text-sm">
+      <Checkbox v-model="form.resetsAccrualClock" :disabled="isPending" class="mt-0.5" />
+      <span>
+        <span class="font-medium">Counts as a real payout</span>
+        <span class="text-muted-foreground block">
+          Resets the accrual clock at this date. Turn off for a credit that never actually reached cash you control
+          (e.g. an internal bank sweep) — it stays in the history below but interest keeps compounding straight through
+          it.
+        </span>
+      </span>
+    </label>
 
     <TextareaField v-model="form.notes" label="Notes" placeholder="Optional" :disabled="isPending" />
 

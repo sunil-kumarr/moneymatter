@@ -74,7 +74,9 @@ const onSaved = () => {
     <td class="px-3 py-2 text-right font-medium tabular-nums">
       {{ metrics ? formatAmountByCurrencyCode(Number(metrics.currentValue), position.currencyCode) : '—' }}
     </td>
-    <td class="text-muted-foreground px-3 py-2 text-right capitalize">{{ position.status.replace('_', ' ') }}</td>
+    <td class="text-muted-foreground px-3 py-2 text-right tabular-nums">
+      {{ Number(position.interestRatePct).toFixed(2) }}%
+    </td>
     <td class="px-3 py-2 text-right">
       <div class="flex justify-end gap-1">
         <Button variant="ghost" size="icon" class="size-8" aria-label="Events" @click="eventsOpen = true">

@@ -154,6 +154,8 @@ const getPortfolioSummaryImpl = async ({
 
   let totalFixedIncomeValueInBase = Money.zero();
   let totalFixedIncomeCostBasisInBase = Money.zero();
+  let totalFixedIncomeRealizedGainInBase = Money.zero();
+  let totalFixedIncomeUnrealizedGainInBase = Money.zero();
   for (const position of fixedIncomePositions) {
     const currentValueInBase = await toBase({
       amount: Money.fromDecimal(position.currentValue),
@@ -163,28 +165,38 @@ const getPortfolioSummaryImpl = async ({
       amount: Money.fromDecimal(position.costBasis),
       currencyCode: position.currencyCode,
     });
+    const realizedGainInBase = await toBase({
+      amount: Money.fromDecimal(position.realizedGain),
+      currencyCode: position.currencyCode,
+    });
+    const unrealizedGainInBase = await toBase({
+      amount: Money.fromDecimal(position.unrealizedGain),
+      currencyCode: position.currencyCode,
+    });
     totalFixedIncomeValueInBase = totalFixedIncomeValueInBase.add(currentValueInBase);
     totalFixedIncomeCostBasisInBase = totalFixedIncomeCostBasisInBase.add(costBasisInBase);
+    totalFixedIncomeRealizedGainInBase = totalFixedIncomeRealizedGainInBase.add(realizedGainInBase);
+    totalFixedIncomeUnrealizedGainInBase = totalFixedIncomeUnrealizedGainInBase.add(unrealizedGainInBase);
   }
-  // Fixed income has no separate "realized" concept: accrued/paid interest simply
-  // moves principal outstanding into current value, so its whole gain is unrealized.
-  const totalFixedIncomeGainInBase = totalFixedIncomeValueInBase.subtract(totalFixedIncomeCostBasisInBase);
 
   if (holdings.length === 0) {
     // Return zero holdings values but include cash + fixed income
     const totalValueInBase = totalCashInBase.add(totalFixedIncomeValueInBase);
     const costBasisNum = totalFixedIncomeCostBasisInBase.toNumber();
-    const unrealizedGainPercent = costBasisNum !== 0 ? (totalFixedIncomeGainInBase.toNumber() / costBasisNum) * 100 : 0;
+    const unrealizedGainPercent =
+      costBasisNum !== 0 ? (totalFixedIncomeUnrealizedGainInBase.toNumber() / costBasisNum) * 100 : 0;
+    const realizedGainPercent =
+      costBasisNum !== 0 ? (totalFixedIncomeRealizedGainInBase.toNumber() / costBasisNum) * 100 : 0;
 
     return {
       portfolioId,
       portfolioName: portfolio.name,
       totalCurrentValue: '0.00',
       totalCostBasis: toDisplay(totalFixedIncomeCostBasisInBase),
-      unrealizedGainValue: toDisplay(totalFixedIncomeGainInBase),
+      unrealizedGainValue: toDisplay(totalFixedIncomeUnrealizedGainInBase),
       unrealizedGainPercent: unrealizedGainPercent.toFixed(2),
-      realizedGainValue: '0.00',
-      realizedGainPercent: '0.00',
+      realizedGainValue: toDisplay(totalFixedIncomeRealizedGainInBase),
+      realizedGainPercent: realizedGainPercent.toFixed(2),
       currencyCode: display.code,
       totalCashInBaseCurrency: toDisplay(totalCashInBase),
       availableCashInBaseCurrency: toDisplay(availableCashInBase),
@@ -224,10 +236,11 @@ const getPortfolioSummaryImpl = async ({
     totalRealizedGainInBase = totalRealizedGainInBase.add(realizedGainInBase);
   }
 
-  // Fold fixed income into the same cost basis / unrealized gain totals as holdings,
-  // so the top-level metrics reconcile with totalPortfolioValue (which already includes it).
+  // Fold fixed income into the same cost basis / gain totals as holdings, so the
+  // top-level metrics reconcile with totalPortfolioValue (which already includes it).
   totalCostBasisInBase = totalCostBasisInBase.add(totalFixedIncomeCostBasisInBase);
-  totalUnrealizedGainInBase = totalUnrealizedGainInBase.add(totalFixedIncomeGainInBase);
+  totalUnrealizedGainInBase = totalUnrealizedGainInBase.add(totalFixedIncomeUnrealizedGainInBase);
+  totalRealizedGainInBase = totalRealizedGainInBase.add(totalFixedIncomeRealizedGainInBase);
 
   // Calculate percentages
   const costBasisNum = totalCostBasisInBase.toNumber();

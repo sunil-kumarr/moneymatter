@@ -7,7 +7,7 @@ import TextareaField from '@/components/fields/textarea-field.vue';
 import UiButton from '@/components/lib/ui/button/Button.vue';
 import * as Select from '@/components/lib/ui/select';
 import { getErrorMessage } from '@/common/utils/error-message';
-import { fractionToPercentInput, isPercentInputValid, percentInputToFraction } from '@/common/utils/percentage';
+import { isPercentInputValid } from '@/common/utils/percentage';
 import { isPositiveDecimal } from '@/common/utils/validators';
 import { NotificationType, useNotificationCenter } from '@/components/notification-center';
 import {
@@ -102,7 +102,7 @@ const form = reactive({
   name: '',
   currencyCode: currenciesStore.baseCurrency?.currencyCode ?? 'USD',
   principal: '',
-  interestRatePctPercent: '0',
+  interestRatePct: '0',
   compoundingFrequency: INTEREST_COMPOUNDING_FREQUENCY.simple as INTEREST_COMPOUNDING_FREQUENCY,
   dayCountConvention: DAY_COUNT_CONVENTION.actual_365 as DAY_COUNT_CONVENTION,
   startDate: new Date() as Date,
@@ -136,7 +136,10 @@ watch(
     form.name = p.name;
     form.currencyCode = p.currencyCode;
     form.principal = String(p.principal);
-    form.interestRatePctPercent = fractionToPercentInput(p.interestRatePct);
+    // interestRatePct is stored and returned as a plain 0-100 percent number (matching
+    // the backend's compute-accrued-interest.ts, which divides by 100 internally) — not
+    // a fraction, unlike the Venture domain's *Pct fields.
+    form.interestRatePct = String(p.interestRatePct);
     form.compoundingFrequency = p.compoundingFrequency ?? INTEREST_COMPOUNDING_FREQUENCY.simple;
     form.dayCountConvention = p.dayCountConvention;
     form.startDate = parseApiDate(p.startDate);
@@ -160,7 +163,7 @@ const isFormValid = computed(
     (isEditing.value || isPositiveDecimal(form.principal)) &&
     form.startDate instanceof Date &&
     !Number.isNaN(form.startDate.getTime()) &&
-    isPercentInputValid(form.interestRatePctPercent),
+    isPercentInputValid(form.interestRatePct),
 );
 
 const toStr = (val: unknown): string => (val == null ? '' : String(val).trim());
@@ -174,7 +177,7 @@ const onSubmit = async () => {
         positionId: props.position.id,
         payload: {
           name: toStr(form.name),
-          interestRatePct: percentInputToFraction(form.interestRatePctPercent),
+          interestRatePct: form.interestRatePct,
           compoundingFrequency: form.compoundingFrequency,
           dayCountConvention: form.dayCountConvention,
           expectedEndDate: form.expectedEndDate ? formatApiDate(form.expectedEndDate) : null,
@@ -193,7 +196,7 @@ const onSubmit = async () => {
         name: toStr(form.name),
         currencyCode: form.currencyCode,
         principal: form.principal,
-        interestRatePct: percentInputToFraction(form.interestRatePctPercent),
+        interestRatePct: form.interestRatePct,
         compoundingFrequency: form.compoundingFrequency,
         dayCountConvention: form.dayCountConvention,
         startDate: formatApiDate(form.startDate),
@@ -285,14 +288,12 @@ const onSubmit = async () => {
 
     <div class="grid grid-cols-2 gap-4">
       <InputField
-        v-model="form.interestRatePctPercent"
+        v-model="form.interestRatePct"
         type="number"
         step="0.01"
         label="Interest Rate (%)"
         :disabled="isPending"
-        :error-message="
-          !isPercentInputValid(form.interestRatePctPercent) ? 'Enter a value between 0 and 100' : undefined
-        "
+        :error-message="!isPercentInputValid(form.interestRatePct) ? 'Enter a value between 0 and 100' : undefined"
       />
       <FieldLabel label="Compounding">
         <Select.Select

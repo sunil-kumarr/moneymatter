@@ -2,6 +2,7 @@ import {
   currencyDisplayPreference,
   formatFiat,
   formatLargeNumber,
+  formatLargeNumberIndian,
   formatUIAmount,
   toLocalCurrencyNumber,
 } from './formatters';
@@ -121,6 +122,35 @@ describe('js/helpers/formatters', () => {
       expect(
         toLocalCurrencyNumber(1234.5, { currency: 'KRW', minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       ).toBe('1,234.50');
+    });
+  });
+
+  describe('formatLargeNumberIndian', () => {
+    test.each<[number, string]>([
+      [99_999, '99,999'],
+      [100_000, '1L'],
+      [1_234_567, '12.35L'],
+      [9_999_999, '99.99L'],
+      [10_000_000, '1Cr'],
+      [123_456_789, '12.35Cr'],
+      [-1_234_567, '-12.35L'],
+    ])('%d → %s', (value, expected) => {
+      expect(formatLargeNumberIndian(value)).toBe(expected);
+    });
+
+    test('drops fraction digits at crore scale by caller-supplied minimumFractionDigits', () => {
+      expect(formatLargeNumberIndian(123_456_789, { minimumFractionDigits: 0 })).toBe('12.35Cr');
+      expect(formatLargeNumberIndian(100_000_000, { minimumFractionDigits: 0 })).toBe('10Cr');
+    });
+
+    test('applies fiat currency formatting', () => {
+      expect(formatLargeNumberIndian(1_234_567, { isFiat: true, currency: 'INR' })).toBe('₹12.35L');
+      expect(formatLargeNumberIndian(123_456_789, { isFiat: true, currency: 'INR' })).toBe('₹12.35Cr');
+    });
+
+    test('custom suffix and threshold: threshold only gates when the suffix kicks in, delimiter stays fixed at 1L', () => {
+      expect(formatLargeNumberIndian(50_000, { lakhSuffix: ' lakh', lakhThreshold: 50_000 })).toBe('0.5 lakh');
+      expect(formatLargeNumberIndian(49_999, { lakhSuffix: ' lakh', lakhThreshold: 50_000 })).toBe('49,999');
     });
   });
 

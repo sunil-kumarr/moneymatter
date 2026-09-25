@@ -16,7 +16,7 @@ const props = defineProps<{
   account: AccountModel;
 }>();
 
-const { formatCompactAmount, formatAmountByCurrencyCode } = useFormatCurrency();
+const { formatCompactAmountLakhs, formatAmountByCurrencyCode } = useFormatCurrency();
 const { displayBalance } = useAccountDisplayBalance({ account: toRef(() => props.account) });
 
 const { isSharedWithCaller, ownerHandle, isHouseholdGranted } = useAccountAccess(toRef(() => props.account));
@@ -63,7 +63,7 @@ const needsReauth = computed(() => isAccountNeedingReauth(props.account));
             class="text-amount shrink-0 text-sm"
             :class="displayBalance >= 0 ? 'text-muted-foreground' : 'text-destructive-text'"
           >
-            {{ formatCompactAmount(displayBalance, account.currencyCode) }}
+            {{ formatCompactAmountLakhs(displayBalance, account.currencyCode) }}
           </span>
         </DesktopOnlyTooltip>
       </div>

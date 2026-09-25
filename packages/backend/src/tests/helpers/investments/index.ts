@@ -4,3 +4,4 @@ export * from './holdings';
 export * from './transactions';
 export * from './portfolios';
 export * from './portfolio-transfers';
+export * from './fixed-income';

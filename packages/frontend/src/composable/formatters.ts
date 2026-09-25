@@ -1,4 +1,4 @@
-import { formatLargeNumber, formatUIAmount } from '@/js/helpers';
+import { formatLargeNumber, formatLargeNumberIndian, formatUIAmount } from '@/js/helpers';
 import { useCurrenciesStore } from '@/stores';
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
@@ -103,10 +103,32 @@ export const useFormatCurrency = () => {
     return formatUIAmount(amount, { currency: currencyCode });
   };
 
+  /**
+   * Compact format using the Indian numbering system (lakh/crore) for
+   * portfolio summary cards:
+   * - < 1L: show with cents (e.g., "₹99,999.99")
+   * - >= 1L: show with L/Cr suffix (e.g., "₹12.35L", "₹1.23Cr")
+   */
+  const formatCompactAmountLakhs = (amount: number, currencyCode: string) => {
+    const abs = Math.abs(amount);
+
+    if (abs >= 100_000) {
+      return formatLargeNumberIndian(amount, {
+        currency: currencyCode,
+        isFiat: true,
+        maximumFractionDigits: 2,
+        minimumFractionDigits: abs >= 10_000_000 ? 0 : 2, // Less precision for larger numbers
+      });
+    }
+    // Normal format with cents for < 1L
+    return formatUIAmount(amount, { currency: currencyCode });
+  };
+
   return {
     formatBaseCurrency,
     formatAmountByCurrencyCode,
     formatCompactAmount,
+    formatCompactAmountLakhs,
     getCurrencySymbol,
   };
 };

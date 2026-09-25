@@ -115,6 +115,7 @@ export interface FixedIncomeEventModel {
   principalReturnedThisEvent: string | null;
   currencyCode: string;
   cashFlowMode: FIXED_INCOME_CASH_FLOW_MODE;
+  resetsAccrualClock: boolean;
   notes: string | null;
   metaData: Record<string, unknown> | null;
   createdAt: Date;
@@ -150,4 +151,11 @@ export interface FixedIncomePositionMetricsModel {
   totalRepaid: string;
   pnlAbsolute: string;
   pnlPct: string | null;
+  // Split of pnlAbsolute: realizedGain is interest that actually reached cash the user
+  // controls (cashFlowMode: linked or out_of_wallet); unrealizedGain is everything else
+  // (still accruing, or rolled into a new term via cashFlowMode: none).
+  realizedGain: string;
+  unrealizedGain: string;
+  realizedGainPct: string | null;
+  unrealizedGainPct: string | null;
 }

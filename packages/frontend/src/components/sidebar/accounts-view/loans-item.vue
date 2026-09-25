@@ -11,7 +11,7 @@ const props = defineProps<{
   loan: LoanApi;
 }>();
 
-const { formatCompactAmount, formatAmountByCurrencyCode } = useFormatCurrency();
+const { formatCompactAmountLakhs, formatAmountByCurrencyCode } = useFormatCurrency();
 
 // Loan balances follow the liability convention (negative while debt is owed), so
 // the signed balance renders as a red negative — matching how liability accounts
@@ -37,7 +37,7 @@ const loanIcon = computed(() => getLoanTypeIcon({ loanType: props.loan.loanDetai
             class="text-amount shrink-0 text-sm"
             :class="balance >= 0 ? 'text-muted-foreground' : 'text-destructive-text'"
           >
-            {{ formatCompactAmount(balance, loan.currencyCode) }}
+            {{ formatCompactAmountLakhs(balance, loan.currencyCode) }}
           </span>
         </DesktopOnlyTooltip>
       </div>

@@ -178,6 +178,77 @@ export function formatLargeNumber(
   return `${formatted}${suffix}`;
 }
 
+/**
+ * Format large numbers using the Indian numbering system:
+ *
+ * 1 - 99,999
+ * 1,00,000 / 1.00L - 99,99,999 / 99.99L
+ * 1,00,00,000 / 1.00Cr - 99,99,99,999 / 99.99Cr
+ * @param {number} value - The number to format
+ * @param {string} options.lakhSuffix - suffix for lakhs
+ * @param {string} options.croreSuffix - suffix for crores
+ * @param {number} options.maximumFractionDigits - maximum fraction digits
+ * @param {number} options.minimumFractionDigits - minimum fraction digits
+ * @param {number} options.lakhThreshold - threshold for lakhs
+ * @param {number} options.croreThreshold - threshold for crores
+ *
+ * @param {boolean} options.isFiat - add fiat currency symbol and formatting
+ * @param {string} options.currency - fiat currency symbol
+ */
+export function formatLargeNumberIndian(
+  value: number | string,
+  options: Pick<Intl.NumberFormatOptions, 'maximumFractionDigits' | 'minimumFractionDigits' | 'currency'> & {
+    lakhSuffix?: string;
+    croreSuffix?: string;
+    lakhThreshold?: number;
+    croreThreshold?: number;
+    isFiat?: boolean;
+  } = {},
+) {
+  const LAKH = 100_000;
+  const CRORE = 10_000_000;
+
+  const suffixes = {
+    lakhSuffix: options.lakhSuffix ?? 'L',
+    croreSuffix: options.croreSuffix ?? 'Cr',
+  };
+
+  const thresholds = {
+    lakhThreshold: options.lakhThreshold ?? LAKH,
+    croreThreshold: options.croreThreshold ?? CRORE,
+  };
+
+  let localNumber = Number(Math.floor(Number(value)));
+
+  // Truncating floating numbers
+  if (Number.isNaN(localNumber)) localNumber = 0;
+  let delimiter = 1;
+  let suffix = '';
+  const abs = Math.abs(localNumber);
+
+  if (abs >= thresholds.croreThreshold) {
+    delimiter = CRORE;
+    suffix = suffixes.croreSuffix;
+  } else if (abs >= thresholds.lakhThreshold) {
+    delimiter = LAKH;
+    suffix = suffixes.lakhSuffix;
+  }
+
+  const formatterFunc = options.isFiat ? toLocalFiatCurrency : toLocalNumber;
+  const maximumFractionDigits = options.maximumFractionDigits ?? 2;
+
+  // Truncate (not round) the scaled value so e.g. 9,999,999 reads "99.99L", not "100L".
+  const truncFactor = 10 ** maximumFractionDigits;
+  const scaledValue = Math.trunc((localNumber / delimiter) * truncFactor) / truncFactor;
+
+  const formatted = formatterFunc(scaledValue, {
+    maximumFractionDigits,
+    minimumFractionDigits: options.minimumFractionDigits ?? 0,
+    currency: options.currency,
+  });
+  return `${formatted}${suffix}`;
+}
+
 export function formatUIAmount(
   value: number,
   {

@@ -30,6 +30,12 @@ const inputSchema = {
     .describe(
       'linked = tie to existing bank transactions; out_of_wallet = record without affecting bank balances; none (default) = not tracked as cash flow. writedown events must use none',
     ),
+  resetsAccrualClock: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether an interest_accrual_payout event flushes accrued interest and resets the compounding clock at its date (default true). Set false for a recorded interest credit that did not verifiably reach cash the user controls (e.g. an internal bank sweep to an unrelated account) — it stays in the ledger for history without interrupting continuous compounding.',
+    ),
   transactionIds: z
     .array(recordId())
     .optional()
@@ -60,6 +66,7 @@ export function registerCreateFixedIncomeEvent(server: McpServer) {
         interestComponent: args.interestComponent,
         currencyCode: args.currencyCode,
         cashFlowMode: args.cashFlowMode,
+        resetsAccrualClock: args.resetsAccrualClock,
         transactionIds: args.transactionIds,
         notes: args.notes,
       });

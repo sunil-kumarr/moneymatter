@@ -15,6 +15,7 @@ export default createController(
       interestComponent: decimalString().nullable().optional(),
       currencyCode: z.string().length(3),
       cashFlowMode: z.nativeEnum(FIXED_INCOME_CASH_FLOW_MODE).optional(),
+      resetsAccrualClock: z.boolean().optional(),
       transactionIds: z.array(recordId()).optional(),
       notes: z.string().nullable().optional(),
     }),

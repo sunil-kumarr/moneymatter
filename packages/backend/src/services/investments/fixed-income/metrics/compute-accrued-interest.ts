@@ -1,5 +1,6 @@
 import {
   DAY_COUNT_CONVENTION,
+  FIXED_INCOME_CASH_FLOW_MODE,
   FIXED_INCOME_EVENT_TYPE,
   INTEREST_COMPOUNDING_FREQUENCY,
 } from '@bt/shared/types/investments';
@@ -21,12 +22,32 @@ const PRINCIPAL_REDUCING_TYPES: readonly FIXED_INCOME_EVENT_TYPE[] = [
   FIXED_INCOME_EVENT_TYPE.maturity,
 ];
 
+// full_repayment/maturity close out the position, so any interest still sitting
+// unpaid at that point must be flushed the same way an interest_accrual_payout would —
+// otherwise it's stranded in accruedUnpaidInterest forever once currentValue resets to
+// zero for a closed position. partial_repayment only returns principal; interest keeps
+// accruing on what remains, so it's excluded here.
+const FINAL_REPAYMENT_TYPES: readonly FIXED_INCOME_EVENT_TYPE[] = [
+  FIXED_INCOME_EVENT_TYPE.full_repayment,
+  FIXED_INCOME_EVENT_TYPE.maturity,
+];
+
+// Interest is only realized once it has actually left the position for cash the user
+// controls — a linked bank transaction, or a payout the user attests happened without
+// a linked transaction. `none` covers accrual bookkeeping with no real cash movement,
+// e.g. auto-renewal rolling interest back into a new term.
+const REALIZED_CASH_FLOW_MODES: readonly FIXED_INCOME_CASH_FLOW_MODE[] = [
+  FIXED_INCOME_CASH_FLOW_MODE.linked,
+  FIXED_INCOME_CASH_FLOW_MODE.out_of_wallet,
+];
+
 interface AccruedInterestResult {
   principalOutstanding: string;
   principalReturnedToDate: string;
   writtenDownTotal: string;
   accruedUnpaidInterest: string;
   totalInterestReceived: string;
+  realizedInterestReceived: string;
 }
 
 function computeSegmentInterest({
@@ -67,10 +88,16 @@ function computeSegmentInterest({
  * Interest is never stored — only principal-changing events and payout
  * events are — so this must be recomputed on every read.
  *
- * `interest_accrual_payout` resets the unpaid-interest clock to zero at that
- * event's date, on the assumption the payout covers everything accrued up to
- * that point (the event's own `grossAmount` is the recorded cash amount for
- * transaction-linking purposes, not re-validated against this computation).
+ * `interest_accrual_payout`, `full_repayment`, and `maturity` events each reset the
+ * unpaid-interest clock to zero at that event's date, on the assumption the payout
+ * covers everything accrued up to that point (the event's own `grossAmount` is the
+ * recorded cash amount for transaction-linking purposes, not re-validated against this
+ * computation). `partial_repayment` only returns principal and leaves the clock running.
+ * Of the interest flushed this way, only the portion whose event has a real cash
+ * movement (`cashFlowMode: linked` or `out_of_wallet`) counts toward
+ * `realizedInterestReceived` — an event recorded with `cashFlowMode: none` (e.g. interest
+ * rolled into an auto-renewed term) leaves that interest in `totalInterestReceived` but
+ * not realized, since it never reached cash the user controls.
  */
 export function computeAccruedInterest({
   principal,
@@ -99,8 +126,17 @@ export function computeAccruedInterest({
   let principalReturnedToDate = new Big(0);
   let writtenDownTotal = new Big(0);
   let totalInterestReceived = new Big(0);
+  let realizedInterestReceived = new Big(0);
   let unpaidInterest = new Big(0);
   let accrualPoint = new Date(`${startDate}T00:00:00.000Z`);
+
+  const flushUnpaidInterest = (cashFlowMode: FIXED_INCOME_CASH_FLOW_MODE) => {
+    totalInterestReceived = totalInterestReceived.plus(unpaidInterest);
+    if (REALIZED_CASH_FLOW_MODES.includes(cashFlowMode)) {
+      realizedInterestReceived = realizedInterestReceived.plus(unpaidInterest);
+    }
+    unpaidInterest = new Big(0);
+  };
 
   const accrueUpTo = (segmentEnd: Date) => {
     if (segmentEnd <= accrualPoint) return;
@@ -136,6 +172,9 @@ export function computeAccruedInterest({
       const next = principalOutstanding.minus(reduction);
       principalOutstanding = next.lt(0) ? new Big(0) : next;
       principalReturnedToDate = principalReturnedToDate.plus(reduction);
+      if (FINAL_REPAYMENT_TYPES.includes(event.type)) {
+        flushUnpaidInterest(event.cashFlowMode);
+      }
       accrualPoint = eventDate;
       continue;
     }
@@ -151,9 +190,12 @@ export function computeAccruedInterest({
     }
 
     if (event.type === FIXED_INCOME_EVENT_TYPE.interest_accrual_payout) {
+      // A non-resetting event stays in the ledger for history but has no effect on the
+      // math: skipping accrueUpTo/flush lets compounding run straight through its date,
+      // so its interest isn't double-counted once by continuous compounding and again here.
+      if (!event.resetsAccrualClock) continue;
       accrueUpTo(eventDate);
-      totalInterestReceived = totalInterestReceived.plus(unpaidInterest);
-      unpaidInterest = new Big(0);
+      flushUnpaidInterest(event.cashFlowMode);
       accrualPoint = eventDate;
       continue;
     }
@@ -168,5 +210,6 @@ export function computeAccruedInterest({
     writtenDownTotal: writtenDownTotal.toFixed(10),
     accruedUnpaidInterest: unpaidInterest.toFixed(10),
     totalInterestReceived: totalInterestReceived.toFixed(10),
+    realizedInterestReceived: realizedInterestReceived.toFixed(10),
   };
 }

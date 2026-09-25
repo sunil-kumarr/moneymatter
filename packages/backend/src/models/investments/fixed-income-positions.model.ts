@@ -61,6 +61,10 @@ export default class FixedIncomePositions extends Model {
   @MoneyField({ storage: 'decimal', precision: 20, scale: 10 })
   declare principal: Money;
 
+  /**
+   * Whole-number annual percent, e.g. "10" for 10% — NOT a [0,1] fraction.
+   * `computeAccruedInterest` divides this by 100 internally.
+   */
   @Column({ type: DataType.DECIMAL(10, 6), allowNull: false, defaultValue: '0' })
   interestRatePct!: string;
 
