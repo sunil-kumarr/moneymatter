@@ -114,6 +114,7 @@ page.
 | `delete_transaction_automation`         | Permanently delete an automation rule (`finance:delete`)                                                         |
 | `reorder_transaction_automations`       | Set the top-to-bottom evaluation order of the automation rules (`finance:write`)                                 |
 | `create_transaction`                    | Create an income, expense, or transfer with optional splits/tags/original-currency amount (`finance:write`)      |
+| `record_loan_payment`                   | Record a payment against a loan account, paying down its balance; rejects overpayment (`finance:write`)          |
 | `update_transaction`                    | Update amount, date, category, tags, note, splits, or original-currency amount (`finance:write`)                 |
 | `delete_transaction`                    | Permanently delete a transaction; transfer pairs are deleted together (`finance:delete`)                         |
 | `create_attachment_upload_url`          | Get a short-lived URL to upload receipt files (JPEG/PNG/WebP/PDF) to a transaction over HTTP (`finance:write`)   |

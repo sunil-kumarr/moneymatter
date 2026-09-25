@@ -68,6 +68,7 @@ import { registerListPortfolioTransfers } from './tools/list-portfolio-transfers
 import { registerListSubscriptionCandidates } from './tools/list-subscription-candidates';
 import { registerMergePayees } from './tools/merge-payees';
 import { registerPreviewTransactionAutomation } from './tools/preview-transaction-automation';
+import { registerRecordLoanPayment } from './tools/record-loan-payment';
 import { registerRemoveTagsFromTransaction } from './tools/remove-tags-from-transaction';
 import { registerRemoveTransactionsFromBudget } from './tools/remove-transactions-from-budget';
 import { registerRemoveTransactionsFromGroup } from './tools/remove-transactions-from-group';
@@ -154,6 +155,7 @@ export function createMcpServer(): McpServer {
   // Transactions (read + CRUD + splits + refunds + transfer linking)
   registerSearchTransactions(server);
   registerCreateTransaction(server);
+  registerRecordLoanPayment(server);
   registerCreateAttachmentUploadUrl(server);
   registerUpdateTransaction(server);
   registerDeleteTransaction(server);
