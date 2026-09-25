@@ -4,6 +4,8 @@ import { Sentry } from '@js/utils/sentry';
 import { toNodeHandler } from 'better-auth/node';
 import { Express, Request, Response } from 'express';
 import http from 'node:http';
+import https from 'node:https';
+import { TLSSocket } from 'node:tls';
 
 import { API_PREFIX } from './config';
 import { auth, authPool } from './config/auth';
@@ -107,12 +109,20 @@ export function setupRoutes(app: Express) {
         body = Buffer.concat(chunks);
       }
 
-      const proxyReq = http.request(
+      // Whether the self-proxy speaks TLS follows this listener, not req.protocol:
+      // behind a TLS-terminating reverse proxy the request is https while the
+      // listener is plain http, and dialing the wrong one fails the registration.
+      const isTlsListener = Boolean((req.socket as TLSSocket).encrypted);
+      const transport = isTlsListener ? https : http;
+
+      const proxyReq = transport.request(
         {
           hostname: '127.0.0.1',
           port: Number(req.app.get('port')) || 8080,
           path: req.originalUrl,
           method: 'POST',
+          // The dev listener's certs are self-signed and issued for localhost.
+          ...(isTlsListener && { rejectUnauthorized: false }),
           headers: {
             ...req.headers,
             'content-length': body.length.toString(),

@@ -56,11 +56,45 @@ export default async ({ mode }) => {
         }
       : undefined;
 
+  // The dev stack is a same-origin deployment: BETTER_AUTH_URL and AUTH_ORIGIN
+  // name this origin (PORT), not the backend's (APPLICATION_PORT), so better-auth,
+  // OAuth discovery and MCP clients all address the paths below here and they have
+  // to reach the backend. Mirrors the nginx same-origin block in
+  // self-hosting/frontend/docker-entrypoint.sh - keep the two in sync.
+  // Abolished alternative: pointing an MCP client straight at APPLICATION_PORT.
+  // The backend builds discovery documents from MCP_BASE_URL, which resolves to
+  // this origin, so the resource URL would not match the endpoint the client
+  // connected to and the handshake is rejected.
+  const backendProxyTarget =
+    process.env.DEV_BACKEND_PROXY_TARGET || `https://localhost:${process.env.APPLICATION_PORT}`;
+
+  const backendProxy = {
+    target: backendProxyTarget,
+    // The dev certs are self-signed.
+    secure: false,
+    // better-auth derives absolute URLs from the incoming Host, which has to stay
+    // the frontend origin its baseURL was configured with.
+    changeOrigin: false,
+  };
+
   const serverConfig = {
     port: process.env.PORT,
     host: process.env.HOST,
     ...(httpsConfig && { https: httpsConfig }),
     hmr: process.env.HMR_HOST ? { host: process.env.HMR_HOST } : true,
+    proxy: {
+      '^/api/': backendProxy,
+      '^/mcp(\\?|$)': backendProxy,
+      // Clients differ on whether the MCP URL they were given keeps a trailing
+      // slash; without this one lands on the SPA fallback and fails confusingly.
+      '^/mcp/': { ...backendProxy, rewrite: (url) => url.replace(/^\/mcp\/+/, '/mcp') },
+      // Claude.ai ignores the endpoints in the AS metadata and calls these on the
+      // origin root; the backend answers them with 307s to /api/v1/auth/oauth2/*.
+      '^/(authorize|token|register)(\\?|$)': backendProxy,
+      // Must out-rank the static mirrors in public/.well-known/, which name the
+      // hosted deployment and would send a local client to production.
+      '^/\\.well-known/oauth-(authorization-server|protected-resource)': backendProxy,
+    },
   };
 
   // Only add Sentry plugin in production build when auth token is available

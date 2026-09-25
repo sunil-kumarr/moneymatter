@@ -7,3 +7,7 @@ const FRONTEND_BASE_URL = (process.env.AUTH_ORIGIN || 'https://localhost:8100').
 
 /** Where Stripe-hosted checkout and portal send the buyer back; must match the frontend plan-billing route. */
 export const PLAN_BILLING_URL = `${FRONTEND_BASE_URL}/settings/plan-billing`;
+
+console.log(
+  `[config] BETTER_AUTH_BASE_URL=${BETTER_AUTH_BASE_URL} MCP_BASE_URL=${MCP_BASE_URL} FRONTEND_BASE_URL=${FRONTEND_BASE_URL}`,
+);
