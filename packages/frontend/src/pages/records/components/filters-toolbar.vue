@@ -50,6 +50,14 @@
 
       <!-- Always-visible filters -->
       <div class="mr-2 mb-2 inline-block w-56 align-top">
+        <SearchInput
+          :model-value="filters.search"
+          :placeholder="$t('transactions.filters.search.placeholder')"
+          @update:model-value="emitFilters({ ...filters, search: $event })"
+        />
+      </div>
+
+      <div class="mr-2 mb-2 inline-block w-56 align-top">
         <DateRangeFilter
           :start="filters.start"
           :end="filters.end"
@@ -207,6 +215,7 @@
 
 <script lang="ts" setup>
 import ComboboxCategories from '@/components/common/combobox-categories.vue';
+import SearchInput from '@/components/common/search-input.vue';
 import { Button } from '@/components/lib/ui/button';
 import * as Popover from '@/components/lib/ui/popover';
 import { FiltersStruct } from '@/components/records-filters/const';

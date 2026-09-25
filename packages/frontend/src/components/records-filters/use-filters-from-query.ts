@@ -66,6 +66,10 @@ export const useFiltersFromQuery = () => {
       filters.noteIncludes = query.noteIncludes as string;
     }
 
+    if (query.search) {
+      filters.search = query.search as string;
+    }
+
     if (query.batchId) {
       filters.batchId = query.batchId as string;
     }

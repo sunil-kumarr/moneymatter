@@ -1,11 +1,13 @@
 import { api } from '@/api/_api';
 import type {
   DAY_COUNT_CONVENTION,
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_CASH_FLOW_MODE,
   FIXED_INCOME_INSTRUMENT_TYPE,
   FixedIncomePositionMetricsModel,
   FixedIncomePositionModel,
   INTEREST_COMPOUNDING_FREQUENCY,
+  INTEREST_PAYOUT_FREQUENCY,
 } from '@bt/shared/types/investments';
 
 interface CreateFixedIncomePositionPayload {
@@ -21,6 +23,10 @@ interface CreateFixedIncomePositionPayload {
   expectedEndDate?: string | null;
   counterpartyName?: string | null;
   counterpartyPayeeId?: string | null;
+  variantName?: string | null;
+  interestPayoutFrequency?: INTEREST_PAYOUT_FREQUENCY;
+  maturityInstruction?: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
+  payoutAccountId?: string | null;
   notes?: string | null;
   initialInvestment?: {
     cashFlowMode: FIXED_INCOME_CASH_FLOW_MODE;
@@ -38,6 +44,10 @@ type UpdateFixedIncomePositionPayload = Partial<
     | 'expectedEndDate'
     | 'counterpartyName'
     | 'counterpartyPayeeId'
+    | 'variantName'
+    | 'interestPayoutFrequency'
+    | 'maturityInstruction'
+    | 'payoutAccountId'
     | 'notes'
   >
 >;

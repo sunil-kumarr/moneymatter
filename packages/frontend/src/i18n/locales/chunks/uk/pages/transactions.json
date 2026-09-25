@@ -50,6 +50,9 @@
         "placeholder": "Amazon,nike",
         "compactPlaceholder": "Пошук у примітках"
       },
+      "search": {
+        "placeholder": "Пошук за приміткою або отримувачем"
+      },
       "tags": {
         "allTags": "Усі теги",
         "tagSingular": "тег",

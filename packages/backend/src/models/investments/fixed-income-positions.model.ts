@@ -1,15 +1,18 @@
 import { RecordId } from '@bt/shared/types';
 import {
   DAY_COUNT_CONVENTION,
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_INSTRUMENT_TYPE,
   FIXED_INCOME_POSITION_STATUS,
   INTEREST_COMPOUNDING_FREQUENCY,
+  INTEREST_PAYOUT_FREQUENCY,
 } from '@bt/shared/types/investments';
 import { IdColumn } from '@common/types/id-column';
 import { Money } from '@common/types/money';
 import { MoneyField } from '@common/types/money-column';
 import { BelongsTo, Column, DataType, ForeignKey, HasMany, Index, Model, Table } from 'sequelize-typescript';
 
+import Accounts from '../accounts.model';
 import Currencies from '../currencies.model';
 import Payees from '../payees.model';
 import Users from '../users.model';
@@ -86,6 +89,28 @@ export default class FixedIncomePositions extends Model {
   @Column({ type: DataType.UUID, allowNull: true })
   counterpartyPayeeId!: RecordId | null;
 
+  @Column({ type: DataType.STRING(255), allowNull: true })
+  variantName!: string | null;
+
+  @Column({
+    type: DataType.STRING(16),
+    allowNull: false,
+    defaultValue: INTEREST_PAYOUT_FREQUENCY.cumulative,
+  })
+  interestPayoutFrequency!: INTEREST_PAYOUT_FREQUENCY;
+
+  @Column({
+    type: DataType.STRING(32),
+    allowNull: false,
+    defaultValue: FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account,
+  })
+  maturityInstruction!: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
+
+  @ForeignKey(() => Accounts)
+  @Index
+  @Column({ type: DataType.UUID, allowNull: true })
+  payoutAccountId!: RecordId | null;
+
   @Column({ type: DataType.TEXT, allowNull: true })
   notes!: string | null;
 
@@ -112,6 +137,9 @@ export default class FixedIncomePositions extends Model {
 
   @BelongsTo(() => Payees)
   counterpartyPayee?: Payees;
+
+  @BelongsTo(() => Accounts)
+  payoutAccount?: Accounts;
 
   @HasMany(() => FixedIncomeEvents)
   events?: FixedIncomeEvents[];

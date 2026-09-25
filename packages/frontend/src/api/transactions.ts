@@ -70,6 +70,8 @@ export const loadTransactions = async ({
   amountGte?: number;
   /** Case-insensitive substring match on the note field. Comma-separated terms are OR-ed. */
   noteSearch?: string;
+  /** General search box: case-insensitive substring match on note OR payee name. Comma-separated terms are OR-ed. */
+  search?: string;
   includeSplits?: boolean;
   includeTags?: boolean;
   includeGroups?: boolean;

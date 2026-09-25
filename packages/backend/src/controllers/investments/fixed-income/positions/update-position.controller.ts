@@ -1,4 +1,9 @@
-import { DAY_COUNT_CONVENTION, INTEREST_COMPOUNDING_FREQUENCY } from '@bt/shared/types/investments';
+import {
+  DAY_COUNT_CONVENTION,
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
+  INTEREST_COMPOUNDING_FREQUENCY,
+  INTEREST_PAYOUT_FREQUENCY,
+} from '@bt/shared/types/investments';
 import { decimalString, recordId } from '@common/lib/zod/custom-types';
 import { createController } from '@controllers/helpers/controller-factory';
 import { updateFixedIncomePosition } from '@services/investments/fixed-income/positions/update.service';
@@ -19,6 +24,10 @@ export default createController(
         .optional(),
       counterpartyName: z.string().trim().max(255).nullable().optional(),
       counterpartyPayeeId: recordId().nullable().optional(),
+      variantName: z.string().trim().max(255).nullable().optional(),
+      interestPayoutFrequency: z.nativeEnum(INTEREST_PAYOUT_FREQUENCY).optional(),
+      maturityInstruction: z.nativeEnum(FIXED_DEPOSIT_MATURITY_INSTRUCTION).optional(),
+      payoutAccountId: recordId().nullable().optional(),
       notes: z.string().nullable().optional(),
     }),
   }),

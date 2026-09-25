@@ -83,6 +83,10 @@
               }}</Tabs.TabsTrigger>
             </Tabs.TabsList>
             <Tabs.TabsContent value="records">
+              <div class="mb-3">
+                <SearchInput v-model="searchInput" :placeholder="t('pages.account.rightPanel.searchPlaceholder')" />
+              </div>
+
               <template v-if="isFetched">
                 <ScrollArea :scroll-area-id="SCROLL_AREA_IDS.accountTransactions" class="h-screen max-h-150">
                   <TransactionsList
@@ -107,6 +111,7 @@ import { loadTransactions } from '@/api';
 import { getVehicles } from '@/api/vehicles';
 import { VUE_QUERY_CACHE_KEYS } from '@/common/const';
 import ResourceNotFound from '@/components/common/resource-not-found.vue';
+import SearchInput from '@/components/common/search-input.vue';
 import { captureException } from '@/lib/sentry';
 import * as Card from '@/components/lib/ui/card';
 import { Callout } from '@/components/lib/ui/callout';
@@ -119,6 +124,7 @@ import { ROUTES_NAMES } from '@/routes/constants';
 import { useAccountsStore } from '@/stores';
 import { ACCOUNT_CATEGORIES } from '@bt/shared/types';
 import { useInfiniteQuery, useQuery } from '@tanstack/vue-query';
+import { useDebounceFn } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -229,9 +235,17 @@ watch(
 
 const limit = 10;
 
+const SEARCH_DEBOUNCE_MS = 400;
+const searchInput = ref('');
+const search = ref('');
+const applySearchDebounced = useDebounceFn((value: string) => {
+  search.value = value;
+}, SEARCH_DEBOUNCE_MS);
+watch(searchInput, (value) => applySearchDebounced(value));
+
 const fetchTransactions = ({ pageParam }: { pageParam: number }) => {
   const offset = pageParam * limit;
-  return loadTransactions({ limit, offset, accountIds: [account.value!.id] });
+  return loadTransactions({ limit, offset, accountIds: [account.value!.id], search: search.value || undefined });
 };
 
 const {
@@ -241,7 +255,7 @@ const {
   isFetchingNextPage,
   isFetched,
 } = useInfiniteQuery({
-  queryKey: [...VUE_QUERY_CACHE_KEYS.accountSpecificTransactions, account],
+  queryKey: [...VUE_QUERY_CACHE_KEYS.accountSpecificTransactions, account, search],
   queryFn: fetchTransactions,
   initialPageParam: 0,
   getNextPageParam: (lastPage, pages) => {

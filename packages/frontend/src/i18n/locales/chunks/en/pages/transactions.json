@@ -50,6 +50,9 @@
         "placeholder": "Amazon,nike",
         "compactPlaceholder": "Search in notes"
       },
+      "search": {
+        "placeholder": "Search by note or payee"
+      },
       "tags": {
         "allTags": "All tags",
         "tagSingular": "tag",

@@ -1,5 +1,11 @@
 <template>
   <div class="grid gap-4">
+    <SearchInput
+      :model-value="filters.search"
+      :placeholder="$t('transactions.filters.search.placeholder')"
+      @update:model-value="$emit('update:filters', { ...filters, search: $event })"
+    />
+
     <DateRangeFilter
       :start="filters.start"
       :end="filters.end"
@@ -99,6 +105,7 @@ import { cn } from '@/lib/utils';
 import AccountMultiSelectField from '@/components/fields/account-multi-select-field.vue';
 import BudgetMultiSelectField from '@/components/fields/budget-multi-select-field.vue';
 import ComboboxCategories from '@/components/common/combobox-categories.vue';
+import SearchInput from '@/components/common/search-input.vue';
 
 import { FiltersStruct } from './const';
 import AmountRangeFilter from './filters/amount-range-filter.vue';

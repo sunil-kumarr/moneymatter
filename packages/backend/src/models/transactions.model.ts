@@ -858,6 +858,7 @@ export const findWithFilters = async ({
   categoryIds,
   payeeIds,
   noteSearch,
+  search,
   attributes,
   categorizationSource,
   categorizedAt,
@@ -923,6 +924,8 @@ export const findWithFilters = async ({
   categoryIds?: string[];
   payeeIds?: string[];
   noteSearch?: string[]; // array of keywords
+  /** General search box: matches note OR payee name, case-insensitive substring. */
+  search?: string[];
   attributes?: (keyof Transactions)[];
   categorizationSource?: CATEGORIZATION_SOURCE;
   /** Exact `categorizationMeta.categorizedAt` stamp, which identifies one categorization run. */
@@ -1193,6 +1196,19 @@ export const findWithFilters = async ({
         [Op.iLike]: `%${term}%`,
       })),
     };
+  }
+
+  // General search box: note OR payee name, case-insensitive substring match. Payee
+  // name lives on a related table, so it's matched via a correlated subquery literal
+  // (same SQL the payeeName sort field uses) rather than a join.
+  if (search && search.length > 0) {
+    const payeeNameLiteral = literal(`(SELECT "name" FROM "Payees" WHERE "Payees"."id" = "Transactions"."payeeId")`);
+    pushAndCondition({
+      [Op.or]: [
+        ...search.map((term) => ({ note: { [Op.iLike]: `%${term}%` } })),
+        ...search.map((term) => sequelizeWhere(payeeNameLiteral, { [Op.iLike]: `%${term}%` })),
+      ],
+    });
   }
 
   // Include group membership info if requested. transactionCount is the group's full

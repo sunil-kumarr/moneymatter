@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AccountSelectField from '@/components/fields/account-select-field.vue';
 import DateField from '@/components/fields/date-field.vue';
 import FieldLabel from '@/components/fields/components/field-label.vue';
 import InputField from '@/components/fields/input-field.vue';
@@ -13,11 +14,14 @@ import {
   useCreateFixedIncomePosition,
   useUpdateFixedIncomePosition,
 } from '@/composable/data-queries/fixed-income/positions';
-import { useCurrenciesStore } from '@/stores';
+import { useAccountsStore, useCurrenciesStore } from '@/stores';
+import { AccountModel } from '@bt/shared/types';
 import {
   DAY_COUNT_CONVENTION,
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_INSTRUMENT_TYPE,
   INTEREST_COMPOUNDING_FREQUENCY,
+  INTEREST_PAYOUT_FREQUENCY,
   type FixedIncomePositionModel,
 } from '@bt/shared/types/investments';
 import { format } from 'date-fns';
@@ -45,6 +49,9 @@ const updateMutation = useUpdateFixedIncomePosition();
 const currenciesStore = useCurrenciesStore();
 const userCurrencies = computed(() => currenciesStore.currencies);
 
+const accountsStore = useAccountsStore();
+const payoutAccountOptions = computed(() => accountsStore.txTargetableAccountsActiveFirst);
+
 const instrumentTypeOptions = [
   { value: FIXED_INCOME_INSTRUMENT_TYPE.fixed_deposit, label: 'Fixed Deposit' },
   { value: FIXED_INCOME_INSTRUMENT_TYPE.bond, label: 'Bond' },
@@ -63,6 +70,23 @@ const dayCountOptions = [
   { value: DAY_COUNT_CONVENTION.actual_365, label: 'Actual/365' },
   { value: DAY_COUNT_CONVENTION.actual_360, label: 'Actual/360' },
   { value: DAY_COUNT_CONVENTION.thirty_360, label: '30/360' },
+];
+
+const interestPayoutOptions = [
+  { value: INTEREST_PAYOUT_FREQUENCY.cumulative, label: 'Cumulative (paid at maturity)' },
+  { value: INTEREST_PAYOUT_FREQUENCY.monthly, label: 'Monthly' },
+  { value: INTEREST_PAYOUT_FREQUENCY.quarterly, label: 'Quarterly' },
+  { value: INTEREST_PAYOUT_FREQUENCY.semi_annually, label: 'Half-Yearly' },
+  { value: INTEREST_PAYOUT_FREQUENCY.annually, label: 'Annually' },
+];
+
+const maturityInstructionOptions = [
+  { value: FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account, label: 'Credit to Account' },
+  { value: FIXED_DEPOSIT_MATURITY_INSTRUCTION.auto_renew_principal, label: 'Auto-Renew Principal' },
+  {
+    value: FIXED_DEPOSIT_MATURITY_INSTRUCTION.auto_renew_principal_and_interest,
+    label: 'Auto-Renew Principal + Interest',
+  },
 ];
 
 const parseApiDate = (s: string): Date => {
@@ -84,8 +108,14 @@ const form = reactive({
   startDate: new Date() as Date,
   expectedEndDate: null as Date | null,
   counterpartyName: '',
+  variantName: '',
+  interestPayoutFrequency: INTEREST_PAYOUT_FREQUENCY.cumulative as INTEREST_PAYOUT_FREQUENCY,
+  maturityInstruction: FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account as FIXED_DEPOSIT_MATURITY_INSTRUCTION,
+  payoutAccount: null as AccountModel | null,
   notes: '',
 });
+
+const isFixedDeposit = computed(() => form.instrumentType === FIXED_INCOME_INSTRUMENT_TYPE.fixed_deposit);
 
 // Peer loans only support simple interest — the backend rejects any other
 // compounding frequency for this instrument type.
@@ -112,6 +142,10 @@ watch(
     form.startDate = parseApiDate(p.startDate);
     form.expectedEndDate = p.expectedEndDate ? parseApiDate(p.expectedEndDate) : null;
     form.counterpartyName = p.counterpartyName ?? '';
+    form.variantName = p.variantName ?? '';
+    form.interestPayoutFrequency = p.interestPayoutFrequency;
+    form.maturityInstruction = p.maturityInstruction;
+    form.payoutAccount = (p.payoutAccountId && accountsStore.accountsRecord[p.payoutAccountId]) || null;
     form.notes = p.notes ?? '';
   },
   { immediate: true },
@@ -145,6 +179,10 @@ const onSubmit = async () => {
           dayCountConvention: form.dayCountConvention,
           expectedEndDate: form.expectedEndDate ? formatApiDate(form.expectedEndDate) : null,
           counterpartyName: toStr(form.counterpartyName) || null,
+          variantName: toStr(form.variantName) || null,
+          interestPayoutFrequency: form.interestPayoutFrequency,
+          maturityInstruction: form.maturityInstruction,
+          payoutAccountId: form.payoutAccount?.id ?? null,
           notes: toStr(form.notes) || null,
         },
       });
@@ -161,6 +199,10 @@ const onSubmit = async () => {
         startDate: formatApiDate(form.startDate),
         expectedEndDate: form.expectedEndDate ? formatApiDate(form.expectedEndDate) : null,
         counterpartyName: toStr(form.counterpartyName) || null,
+        variantName: toStr(form.variantName) || null,
+        interestPayoutFrequency: form.interestPayoutFrequency,
+        maturityInstruction: form.maturityInstruction,
+        payoutAccountId: form.payoutAccount?.id ?? null,
         notes: toStr(form.notes) || null,
       });
     }
@@ -197,6 +239,14 @@ const onSubmit = async () => {
       placeholder="e.g. HDFC 1-year FD"
       :disabled="isPending"
       :error-message="!form.name.trim() ? 'Name is required' : undefined"
+    />
+
+    <InputField
+      v-if="isFixedDeposit"
+      v-model="form.variantName"
+      label="FD Variant / Scheme"
+      placeholder="e.g. Tax Saver FD"
+      :disabled="isPending"
     />
 
     <div class="grid grid-cols-2 gap-4">
@@ -261,7 +311,7 @@ const onSubmit = async () => {
       </FieldLabel>
     </div>
 
-    <FieldLabel label="Day Count Convention">
+    <FieldLabel v-if="!isFixedDeposit" label="Day Count Convention">
       <Select.Select v-model="form.dayCountConvention" :disabled="isPending">
         <Select.SelectTrigger>
           <Select.SelectValue />
@@ -274,7 +324,45 @@ const onSubmit = async () => {
       </Select.Select>
     </FieldLabel>
 
+    <div v-if="isFixedDeposit" class="grid grid-cols-2 gap-4">
+      <FieldLabel label="Interest Payout">
+        <Select.Select v-model="form.interestPayoutFrequency" :disabled="isPending">
+          <Select.SelectTrigger>
+            <Select.SelectValue />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            <Select.SelectItem v-for="o in interestPayoutOptions" :key="o.value" :value="o.value">
+              {{ o.label }}
+            </Select.SelectItem>
+          </Select.SelectContent>
+        </Select.Select>
+      </FieldLabel>
+      <FieldLabel label="Maturity Instructions">
+        <Select.Select v-model="form.maturityInstruction" :disabled="isPending">
+          <Select.SelectTrigger>
+            <Select.SelectValue />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            <Select.SelectItem v-for="o in maturityInstructionOptions" :key="o.value" :value="o.value">
+              {{ o.label }}
+            </Select.SelectItem>
+          </Select.SelectContent>
+        </Select.Select>
+      </FieldLabel>
+    </div>
+
+    <AccountSelectField
+      v-if="isFixedDeposit"
+      v-model="form.payoutAccount"
+      :accounts="payoutAccountOptions"
+      label="Payout Account"
+      placeholder="Where interest / maturity proceeds land"
+      clearable
+      :disabled="isPending"
+    />
+
     <InputField
+      v-if="!isFixedDeposit"
       v-model="form.counterpartyName"
       label="Counterparty / Borrower Name"
       placeholder="Optional"

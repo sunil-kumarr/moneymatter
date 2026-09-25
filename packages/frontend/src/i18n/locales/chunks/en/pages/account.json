@@ -229,6 +229,7 @@
       },
       "rightPanel": {
         "transactions": "Transactions",
+        "searchPlaceholder": "Search transactions",
         "analyticsSoon": "Analytics (soon)"
       },
       "integrations": {

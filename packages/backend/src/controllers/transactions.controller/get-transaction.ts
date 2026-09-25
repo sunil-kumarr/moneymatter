@@ -100,6 +100,17 @@ const schema = z.object({
             if (!val || val === '') return undefined;
             return parseCommaSeparatedStrings(val);
           }),
+        // General search box: matches note OR payee name. Comma-separated terms are OR-ed.
+        search: z
+          .string()
+          .optional()
+          .refine((val) => val !== '[object Object]', {
+            message: 'Invalid search value: received object instead of string',
+          })
+          .transform((val) => {
+            if (!val || val === '') return undefined;
+            return parseCommaSeparatedStrings(val);
+          }),
         categorizationSource: z.nativeEnum(CATEGORIZATION_SOURCE).optional(),
         categorizedAt: z.string().datetime().optional(),
         batchId: recordId().optional(),

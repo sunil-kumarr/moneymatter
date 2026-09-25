@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ResponsiveAlertDialog from '@/components/common/responsive-alert-dialog.vue';
 import ResponsiveDialog from '@/components/common/responsive-dialog.vue';
-import FixedIncomeEventForm from '@/components/forms/fixed-income-event-form.vue';
+import FixedIncomeEventsList from '@/components/forms/fixed-income-events-list.vue';
 import FixedIncomePositionForm from '@/components/forms/fixed-income-position-form.vue';
 import { Button } from '@/components/lib/ui/button';
 import { NotificationType, useNotificationCenter } from '@/components/notification-center';
@@ -13,7 +13,7 @@ import { useFormatCurrency } from '@/composable/formatters';
 import { getApiErrorMessage } from '@/js/errors';
 import { captureException } from '@/lib/sentry';
 import type { FixedIncomePositionModel } from '@bt/shared/types/investments';
-import { PencilIcon, PlusIcon, Trash2Icon } from '@lucide/vue';
+import { ListIcon, PencilIcon, Trash2Icon } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -27,7 +27,7 @@ const { formatAmountByCurrencyCode } = useFormatCurrency();
 const { data: metrics } = useFixedIncomePositionMetrics(computed(() => props.position.id));
 
 const editOpen = ref(false);
-const recordEventOpen = ref(false);
+const eventsOpen = ref(false);
 const deleteConfirmOpen = ref(false);
 
 const deleteMutation = useDeleteFixedIncomePosition();
@@ -57,7 +57,6 @@ const confirmDelete = async () => {
 
 const onSaved = () => {
   editOpen.value = false;
-  recordEventOpen.value = false;
   emit('changed');
 };
 </script>
@@ -78,8 +77,8 @@ const onSaved = () => {
     <td class="text-muted-foreground px-3 py-2 text-right capitalize">{{ position.status.replace('_', ' ') }}</td>
     <td class="px-3 py-2 text-right">
       <div class="flex justify-end gap-1">
-        <Button variant="ghost" size="icon" class="size-8" aria-label="Record Event" @click="recordEventOpen = true">
-          <PlusIcon class="size-4" />
+        <Button variant="ghost" size="icon" class="size-8" aria-label="Events" @click="eventsOpen = true">
+          <ListIcon class="size-4" />
         </Button>
         <Button variant="ghost" size="icon" class="size-8" aria-label="Edit" @click="editOpen = true">
           <PencilIcon class="size-4" />
@@ -107,9 +106,9 @@ const onSaved = () => {
     />
   </ResponsiveDialog>
 
-  <ResponsiveDialog v-model:open="recordEventOpen">
-    <template #title>Record Event</template>
-    <FixedIncomeEventForm :position="position" @saved="onSaved" @cancel="recordEventOpen = false" />
+  <ResponsiveDialog v-model:open="eventsOpen" dialog-content-class="sm:max-w-[700px]">
+    <template #title>{{ position.name }} — Events</template>
+    <FixedIncomeEventsList :position="position" @changed="emit('changed')" />
   </ResponsiveDialog>
 
   <ResponsiveAlertDialog

@@ -1,4 +1,4 @@
-import { CurrencyModel, PayeeModel, TransactionModel, UserModel } from '../db-models';
+import { AccountModel, CurrencyModel, PayeeModel, TransactionModel, UserModel } from '../db-models';
 import { PortfolioModel } from './portfolio-models';
 
 export enum FIXED_INCOME_INSTRUMENT_TYPE {
@@ -40,6 +40,26 @@ export enum DAY_COUNT_CONVENTION {
 }
 
 /**
+ * How often accrued interest is actually paid out. Distinct from
+ * `INTEREST_COMPOUNDING_FREQUENCY`, which governs how interest grows internally —
+ * a deposit can compound quarterly but only pay out (or credit) half-yearly.
+ * 'cumulative' means interest is reinvested and paid together with the principal at maturity.
+ */
+export enum INTEREST_PAYOUT_FREQUENCY {
+  cumulative = 'cumulative',
+  monthly = 'monthly',
+  quarterly = 'quarterly',
+  semi_annually = 'semi_annually',
+  annually = 'annually',
+}
+
+export enum FIXED_DEPOSIT_MATURITY_INSTRUCTION {
+  credit_to_account = 'credit_to_account',
+  auto_renew_principal = 'auto_renew_principal',
+  auto_renew_principal_and_interest = 'auto_renew_principal_and_interest',
+}
+
+/**
  * Shared with the Venture domain's cash-flow model (linked to a wallet
  * transaction, tracked without a linked transaction, or not tracked at all).
  */
@@ -65,6 +85,10 @@ export interface FixedIncomePositionModel {
   expectedEndDate: string | null;
   counterpartyName: string | null;
   counterpartyPayeeId: string | null;
+  variantName: string | null;
+  interestPayoutFrequency: INTEREST_PAYOUT_FREQUENCY;
+  maturityInstruction: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
+  payoutAccountId: string | null;
   notes: string | null;
   metaData: Record<string, unknown> | null;
   createdAt: Date;
@@ -75,6 +99,7 @@ export interface FixedIncomePositionModel {
   portfolio?: PortfolioModel;
   currency?: CurrencyModel;
   counterpartyPayee?: PayeeModel;
+  payoutAccount?: AccountModel;
   events?: FixedIncomeEventModel[];
 }
 

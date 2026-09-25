@@ -29,6 +29,12 @@ const EVENT_TYPES = [
 const COMPOUNDING_FREQUENCIES = ['simple', 'annually', 'semi_annually', 'quarterly', 'monthly'] as const;
 const DAY_COUNT_CONVENTIONS = ['actual_365', 'actual_360', 'thirty_360'] as const;
 const CASH_FLOW_MODES = ['linked', 'out_of_wallet', 'none'] as const;
+const INTEREST_PAYOUT_FREQUENCIES = ['cumulative', 'monthly', 'quarterly', 'semi_annually', 'annually'] as const;
+const MATURITY_INSTRUCTIONS = [
+  'credit_to_account',
+  'auto_renew_principal',
+  'auto_renew_principal_and_interest',
+] as const;
 
 const inClause = (values: readonly string[]) => values.map((v) => `'${v}'`).join(', ');
 
@@ -118,6 +124,27 @@ module.exports = {
             onUpdate: 'CASCADE',
             onDelete: 'SET NULL',
           },
+          variantName: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+          },
+          interestPayoutFrequency: {
+            type: DataTypes.STRING(16),
+            allowNull: false,
+            defaultValue: 'cumulative',
+          },
+          maturityInstruction: {
+            type: DataTypes.STRING(32),
+            allowNull: false,
+            defaultValue: 'credit_to_account',
+          },
+          payoutAccountId: {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: { model: 'Accounts', key: 'id' },
+            onUpdate: 'CASCADE',
+            onDelete: 'SET NULL',
+          },
           notes: {
             type: DataTypes.TEXT,
             allowNull: true,
@@ -169,6 +196,10 @@ module.exports = {
         name: 'fixed_income_positions_counterparty_payee_id_idx',
         transaction: t,
       });
+      await queryInterface.addIndex('FixedIncomePositions', ['payoutAccountId'], {
+        name: 'fixed_income_positions_payout_account_id_idx',
+        transaction: t,
+      });
       await queryInterface.addIndex('FixedIncomePositions', ['startDate'], {
         name: 'fixed_income_positions_start_date_idx',
         transaction: t,
@@ -211,6 +242,16 @@ module.exports = {
            OR "compoundingFrequency" IS NULL
            OR "compoundingFrequency" = 'simple'
          );`,
+        { transaction: t },
+      );
+      await queryInterface.sequelize.query(
+        `ALTER TABLE "FixedIncomePositions" ADD CONSTRAINT "chk_fixed_income_positions_interest_payout_frequency"
+         CHECK ("interestPayoutFrequency" IN (${inClause(INTEREST_PAYOUT_FREQUENCIES)}));`,
+        { transaction: t },
+      );
+      await queryInterface.sequelize.query(
+        `ALTER TABLE "FixedIncomePositions" ADD CONSTRAINT "chk_fixed_income_positions_maturity_instruction"
+         CHECK ("maturityInstruction" IN (${inClause(MATURITY_INSTRUCTIONS)}));`,
         { transaction: t },
       );
 

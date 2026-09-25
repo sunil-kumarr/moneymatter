@@ -115,6 +115,7 @@ export const useTransactionsWithFilters = ({
           amountGte: filter.amountGte,
           amountLte: filter.amountLte,
           noteSearch: filter.noteIncludes,
+          search: filter.search,
           hasAttachment: buildTriStateParam({ value: filter.attachmentFilter }),
           transferFilter: filterOrUndefined(filter.transferFilter),
           refundFilter: filterOrUndefined(filter.refundFilter),

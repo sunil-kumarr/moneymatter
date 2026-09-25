@@ -28,6 +28,8 @@ export interface FiltersStruct {
   budgetIds: string[];
   excludedBudgetIds: string[];
   noteIncludes: string;
+  /** Always-visible search box: matches note OR payee name. */
+  search: string;
   attachmentFilter: FILTER_OPERATION;
   categoryIds: string[];
   tagIds: string[];
@@ -51,6 +53,7 @@ export const DEFAULT_FILTERS: FiltersStruct = {
   budgetIds: [],
   excludedBudgetIds: [],
   noteIncludes: '',
+  search: '',
   attachmentFilter: FILTER_OPERATION.all,
   categoryIds: [],
   tagIds: [],

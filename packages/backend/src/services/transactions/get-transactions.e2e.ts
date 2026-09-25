@@ -476,6 +476,61 @@ describe('Retrieve transactions with filters', () => {
     });
   });
 
+  describe('general search (note + payee name)', () => {
+    it('matches note or payee name, case-insensitive, comma-separated terms OR-ed', async () => {
+      const accountA = await helpers.createAccount({ raw: true });
+      const payee = await helpers.createPayee({ payload: { name: 'Coffee Shop' }, raw: true });
+
+      // note matches, no payee
+      await helpers.createTransaction({
+        payload: helpers.buildTransactionPayload({
+          accountId: accountA.id,
+          amount: 500,
+          transactionType: TRANSACTION_TYPES.expense,
+          note: 'Morning coffee run',
+        }),
+      });
+      // payee matches, unrelated note
+      await helpers.createTransaction({
+        payload: helpers.buildTransactionPayload({
+          accountId: accountA.id,
+          amount: 700,
+          transactionType: TRANSACTION_TYPES.expense,
+          note: 'unrelated purchase',
+          payeeId: payee.id,
+        }),
+      });
+      // matches neither
+      await helpers.createTransaction({
+        payload: helpers.buildTransactionPayload({
+          accountId: accountA.id,
+          amount: 900,
+          transactionType: TRANSACTION_TYPES.expense,
+          note: 'groceries',
+        }),
+      });
+
+      const res = (
+        await Promise.all(
+          ['coffee', 'COFFEE SHOP', 'coffee,groceries', 'random-text'].map((t) =>
+            helpers.getTransactions({ search: t, raw: true }),
+          ),
+        )
+      ).map((items) => items?.length ?? 0);
+
+      expect(res).toEqual([
+        1, // note-only match
+        1, // payee-name match, case-insensitive
+        3, // comma-separated terms OR-ed: coffee note + coffee payee + groceries note
+        0, // no match
+      ]);
+
+      const emptyParam = await helpers.getTransactions({ search: '' });
+      expect(emptyParam.statusCode).toBe(200);
+      expect(helpers.extractResponse(emptyParam!).length).toBe(3);
+    });
+  });
+
   describe('"blank" pseudo-id in list filters', () => {
     it('payeeIds: blank alone matches only transactions without a payee', async () => {
       const account = await helpers.createAccount({ raw: true });

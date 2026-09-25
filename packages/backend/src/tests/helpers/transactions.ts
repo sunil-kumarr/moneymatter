@@ -143,10 +143,11 @@ export function getTransactions<R extends boolean | undefined = undefined>({
   raw,
   ...rest
 }: Partial<
-  Omit<Parameters<typeof apiGetTransactions>[0], 'userId' | 'noteSearch' | 'from' | 'startDate' | 'endDate'>
+  Omit<Parameters<typeof apiGetTransactions>[0], 'userId' | 'noteSearch' | 'search' | 'from' | 'startDate' | 'endDate'>
 > & {
   raw?: R;
   noteSearch?: string; // comma-separated string
+  search?: string; // comma-separated string
   // API query vocabulary (the service uses `from`/`startDate`/`endDate` internally;
   // the HTTP endpoint exposes `offset` + `from`/`to`).
   offset?: number;

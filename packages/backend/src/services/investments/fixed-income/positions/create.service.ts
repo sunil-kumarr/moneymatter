@@ -1,14 +1,17 @@
 import {
   DAY_COUNT_CONVENTION,
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_CASH_FLOW_MODE,
   FIXED_INCOME_EVENT_TYPE,
   FIXED_INCOME_INSTRUMENT_TYPE,
   FIXED_INCOME_POSITION_STATUS,
   INTEREST_COMPOUNDING_FREQUENCY,
+  INTEREST_PAYOUT_FREQUENCY,
 } from '@bt/shared/types/investments';
 import { Money } from '@common/types/money';
 import { findOrThrowNotFound } from '@common/utils/find-or-throw-not-found';
 import { ValidationError } from '@js/errors';
+import Accounts from '@models/accounts.model';
 import Currencies from '@models/currencies.model';
 import FixedIncomePositions from '@models/investments/fixed-income-positions.model';
 import Portfolios from '@models/investments/portfolios.model';
@@ -35,6 +38,10 @@ interface CreateFixedIncomePositionParams {
   expectedEndDate?: string | null;
   counterpartyName?: string | null;
   counterpartyPayeeId?: string | null;
+  variantName?: string | null;
+  interestPayoutFrequency?: INTEREST_PAYOUT_FREQUENCY;
+  maturityInstruction?: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
+  payoutAccountId?: string | null;
   notes?: string | null;
   initialInvestment?: InitialInvestmentInput;
 }
@@ -54,6 +61,10 @@ const createFixedIncomePositionImpl = async (params: CreateFixedIncomePositionPa
     expectedEndDate = null,
     counterpartyName = null,
     counterpartyPayeeId = null,
+    variantName = null,
+    interestPayoutFrequency = INTEREST_PAYOUT_FREQUENCY.cumulative,
+    maturityInstruction = FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account,
+    payoutAccountId = null,
     notes = null,
   } = params;
 
@@ -66,6 +77,13 @@ const createFixedIncomePositionImpl = async (params: CreateFixedIncomePositionPa
     query: Portfolios.findOne({ where: { id: portfolioId, userId } }),
     message: 'Portfolio not found',
   });
+
+  if (payoutAccountId) {
+    await findOrThrowNotFound({
+      query: Accounts.findOne({ where: { id: payoutAccountId, userId } }),
+      message: 'Payout account not found',
+    });
+  }
 
   if (Number(principal) < 0) {
     throw new ValidationError({ message: 'Principal must be non-negative' });
@@ -96,21 +114,26 @@ const createFixedIncomePositionImpl = async (params: CreateFixedIncomePositionPa
     expectedEndDate,
     counterpartyName,
     counterpartyPayeeId,
+    variantName,
+    interestPayoutFrequency,
+    maturityInstruction,
+    payoutAccountId,
     notes,
   });
 
-  if (params.initialInvestment) {
-    await createFixedIncomeEvent({
-      userId,
-      positionId: position.id,
-      type: FIXED_INCOME_EVENT_TYPE.initial_investment,
-      eventDate: startDate,
-      grossAmount: principal,
-      currencyCode,
-      cashFlowMode: params.initialInvestment.cashFlowMode,
-      transactionIds: params.initialInvestment.transactionIds ?? [],
-    });
-  }
+  // Every position needs an initial_investment event — it's what seeds
+  // `principalOutstanding` for the accrual engine (see computeAccruedInterest).
+  // Without it, interest always computes to zero regardless of the configured rate.
+  await createFixedIncomeEvent({
+    userId,
+    positionId: position.id,
+    type: FIXED_INCOME_EVENT_TYPE.initial_investment,
+    eventDate: startDate,
+    grossAmount: principal,
+    currencyCode,
+    cashFlowMode: params.initialInvestment?.cashFlowMode ?? FIXED_INCOME_CASH_FLOW_MODE.none,
+    transactionIds: params.initialInvestment?.transactionIds ?? [],
+  });
 
   return position.reload();
 };
