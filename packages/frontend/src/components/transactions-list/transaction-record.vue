@@ -86,23 +86,45 @@
         </template>
         <template v-else-if="isPortfolioLinked">
           <div :class="['flex items-center gap-1.5', compact && 'min-w-0']">
-            <AccountLogo v-if="accountFrom" :account="accountFrom" class="size-5 shrink-0" />
-            <span class="line-clamp-1 text-sm tracking-wider">
-              {{ accountFrom?.name }}
-            </span>
-            <ArrowRight :size="14" class="shrink-0 opacity-60" />
-            <BriefcaseIcon :size="14" class="text-app-transfer-color shrink-0" />
-            <template v-if="isLoadingPortfolioLink">
-              <div class="h-4 w-16 animate-pulse rounded bg-white/10" />
+            <template v-if="isPortfolioWithdrawal">
+              <BriefcaseIcon :size="14" class="text-app-transfer-color shrink-0" />
+              <template v-if="isLoadingPortfolioLink">
+                <div class="h-4 w-16 animate-pulse rounded bg-white/10" />
+              </template>
+              <template v-else>
+                <span
+                  class="line-clamp-1 text-sm tracking-wider"
+                  :class="{ 'text-muted-foreground line-through': isPortfolioDeleted }"
+                >
+                  {{ portfolioName }}
+                </span>
+                <DeletedBadge v-if="isPortfolioDeleted" />
+              </template>
+              <ArrowRight :size="14" class="shrink-0 opacity-60" />
+              <AccountLogo v-if="accountFrom" :account="accountFrom" class="size-5 shrink-0" />
+              <span class="line-clamp-1 text-sm tracking-wider">
+                {{ accountFrom?.name }}
+              </span>
             </template>
             <template v-else>
-              <span
-                class="line-clamp-1 text-sm tracking-wider"
-                :class="{ 'text-muted-foreground line-through': isPortfolioDeleted }"
-              >
-                {{ portfolioName }}
+              <AccountLogo v-if="accountFrom" :account="accountFrom" class="size-5 shrink-0" />
+              <span class="line-clamp-1 text-sm tracking-wider">
+                {{ accountFrom?.name }}
               </span>
-              <DeletedBadge v-if="isPortfolioDeleted" />
+              <ArrowRight :size="14" class="shrink-0 opacity-60" />
+              <BriefcaseIcon :size="14" class="text-app-transfer-color shrink-0" />
+              <template v-if="isLoadingPortfolioLink">
+                <div class="h-4 w-16 animate-pulse rounded bg-white/10" />
+              </template>
+              <template v-else>
+                <span
+                  class="line-clamp-1 text-sm tracking-wider"
+                  :class="{ 'text-muted-foreground line-through': isPortfolioDeleted }"
+                >
+                  {{ portfolioName }}
+                </span>
+                <DeletedBadge v-if="isPortfolioDeleted" />
+              </template>
             </template>
           </div>
         </template>
@@ -313,6 +335,7 @@ const portfolioLinkId = computed(() => (isPortfolioLinked.value ? transaction.va
 const { data: portfolioLinkData, isLoading: isLoadingPortfolioLink } = useTransactionPortfolioLink(portfolioLinkId);
 const portfolioName = computed(() => portfolioLinkData.value?.portfolioName ?? '');
 const isPortfolioDeleted = computed(() => portfolioLinkData.value?.isPortfolioDeleted ?? false);
+const isPortfolioWithdrawal = computed(() => portfolioLinkData.value?.transferType === 'withdrawal');
 
 // Show grouped transfer display when we have both sides
 const shouldShowGroupedTransfer = computed(() => {

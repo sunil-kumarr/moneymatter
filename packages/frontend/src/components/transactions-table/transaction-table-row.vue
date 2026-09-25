@@ -46,25 +46,34 @@
       <!-- Account -->
       <template v-else-if="column.id === TABLE_COLUMN.account">
         <div class="flex items-center gap-1.5">
-          <AccountLogo v-if="accountFrom" :account="accountFrom" class="size-5 shrink-0" />
-          <span class="max-w-36 truncate">{{ accountFrom?.name }}</span>
-          <template v-if="isTwoLegTransferRow">
-            <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
-            <AccountLogo
-              v-if="transferDestinationAccount"
-              :account="transferDestinationAccount"
-              class="size-5 shrink-0"
-            />
-            <span class="max-w-36 truncate">{{ transferDestinationName }}</span>
-          </template>
-          <template v-else-if="isOutOfWalletTransfer">
-            <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
-            <span class="text-muted-foreground">{{ $t('transactions.table.outOfWallet') }}</span>
-          </template>
-          <template v-else-if="isPortfolioLinked">
-            <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
+          <template v-if="isPortfolioLinked && isPortfolioWithdrawal">
             <BriefcaseIcon :size="13" class="text-app-transfer-color shrink-0" />
             <span class="max-w-36 truncate">{{ portfolioName }}</span>
+            <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
+            <AccountLogo v-if="accountFrom" :account="accountFrom" class="size-5 shrink-0" />
+            <span class="max-w-36 truncate">{{ accountFrom?.name }}</span>
+          </template>
+          <template v-else>
+            <AccountLogo v-if="accountFrom" :account="accountFrom" class="size-5 shrink-0" />
+            <span class="max-w-36 truncate">{{ accountFrom?.name }}</span>
+            <template v-if="isTwoLegTransferRow">
+              <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
+              <AccountLogo
+                v-if="transferDestinationAccount"
+                :account="transferDestinationAccount"
+                class="size-5 shrink-0"
+              />
+              <span class="max-w-36 truncate">{{ transferDestinationName }}</span>
+            </template>
+            <template v-else-if="isOutOfWalletTransfer">
+              <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
+              <span class="text-muted-foreground">{{ $t('transactions.table.outOfWallet') }}</span>
+            </template>
+            <template v-else-if="isPortfolioLinked">
+              <ArrowRightIcon :size="13" class="shrink-0 opacity-60" />
+              <BriefcaseIcon :size="13" class="text-app-transfer-color shrink-0" />
+              <span class="max-w-36 truncate">{{ portfolioName }}</span>
+            </template>
           </template>
         </div>
       </template>
@@ -249,6 +258,7 @@ const { data: oppositeTx } = useOppositeTxRecord(() => props.tx);
 const portfolioLinkId = computed(() => (isPortfolioLinked.value ? props.tx.id : undefined));
 const { data: portfolioLinkData } = useTransactionPortfolioLink(portfolioLinkId);
 const portfolioName = computed(() => portfolioLinkData.value?.portfolioName ?? '');
+const isPortfolioWithdrawal = computed(() => portfolioLinkData.value?.transferType === 'withdrawal');
 
 const category = computed(() => categoriesMap.value[props.tx.categoryId]);
 const accountFrom = computed(() => accountsRecord.value[props.tx.accountId]);

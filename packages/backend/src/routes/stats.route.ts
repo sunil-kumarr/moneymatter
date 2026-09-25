@@ -42,6 +42,12 @@ router.get(
   statsController.getCashFlow.handler,
 );
 router.get(
+  '/account-analytics',
+  authenticateSession,
+  validateEndpoint(statsController.getAccountAnalytics.schema),
+  statsController.getAccountAnalytics.handler,
+);
+router.get(
   '/net-worth-drivers',
   authenticateSession,
   validateEndpoint(statsController.getNetWorthDrivers.schema),

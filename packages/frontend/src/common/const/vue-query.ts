@@ -105,6 +105,9 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   widgetCashFlowPrev: [transactionChange, 'widget-cash-flow-prev'] as const,
   widgetCashFlowTrend: [transactionChange, 'widget-cash-flow-trend'] as const,
 
+  // widget salary trend
+  widgetSalaryTrend: [transactionChange, 'widget-salary-trend'] as const,
+
   // widget net worth
   widgetNetWorth: [
     transactionChange,
@@ -152,6 +155,7 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   recordsPageTransactionList: [transactionChange, 'records-page'] as const,
 
   accountSpecificTransactions: [transactionChange, 'account-transactions'] as const,
+  accountAnalytics: [transactionChange, 'account-analytics'] as const,
 
   accountTransactionCount: [transactionChange, 'account-transaction-count'] as const,
 

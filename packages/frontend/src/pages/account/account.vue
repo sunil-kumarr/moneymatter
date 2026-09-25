@@ -78,9 +78,7 @@
           <Tabs.Tabs default-value="records">
             <Tabs.TabsList class="w-full justify-start">
               <Tabs.TabsTrigger value="records">{{ t('pages.account.rightPanel.transactions') }}</Tabs.TabsTrigger>
-              <Tabs.TabsTrigger disabled value="analytics">{{
-                t('pages.account.rightPanel.analyticsSoon')
-              }}</Tabs.TabsTrigger>
+              <Tabs.TabsTrigger value="analytics">Analytics</Tabs.TabsTrigger>
             </Tabs.TabsList>
             <Tabs.TabsContent value="records">
               <div class="mb-3">
@@ -98,6 +96,9 @@
                   />
                 </ScrollArea>
               </template>
+            </Tabs.TabsContent>
+            <Tabs.TabsContent value="analytics">
+              <AccountAnalytics :account-id="account.id" />
             </Tabs.TabsContent>
           </Tabs.Tabs>
         </Card.CardContent>
@@ -130,6 +131,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
+import AccountAnalytics from './components/analytics/account-analytics.vue';
 import Header from './components/header.vue';
 import { isGenuineVehicleOrphan } from './is-vehicle-orphan';
 import BankConnectionView from './types/bank-connection/index.vue';

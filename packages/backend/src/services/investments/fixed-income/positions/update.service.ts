@@ -17,6 +17,7 @@ interface UpdateFixedIncomePositionParams {
   userId: number;
   positionId: string;
   name?: string;
+  startDate?: string;
   interestRatePct?: string;
   compoundingFrequency?: INTEREST_COMPOUNDING_FREQUENCY | null;
   dayCountConvention?: DAY_COUNT_CONVENTION;

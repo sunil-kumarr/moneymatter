@@ -130,6 +130,16 @@
         "previousPeriodsTrend": "Previous periods trend",
         "viewDetails": "View details"
       },
+      "salaryTrend": {
+        "title": "Salary Trend",
+        "categoryLabel": "Salary category",
+        "selectCategory": "Select category",
+        "noCategorySelected": "Pick a category to track as salary income for this chart.",
+        "granularity": {
+          "monthly": "Monthly",
+          "yearly": "Yearly"
+        }
+      },
       "netWorth": {
         "title": "Net Worth",
         "description": "How your net worth changed over the selected period. Counts every balance change: accounts, investments, loans, and asset values.",
@@ -196,6 +206,10 @@
         "cashFlow": {
           "name": "Cash Flow",
           "description": "Income vs expenses with savings rate"
+        },
+        "salaryTrend": {
+          "name": "Salary Trend",
+          "description": "Track salary income over time, by month or year"
         },
         "netWorth": {
           "name": "Net Worth",

@@ -207,6 +207,26 @@ export const getCashFlow = async ({
   return api.get('/stats/cash-flow', params);
 };
 
+interface GetAccountAnalyticsParams {
+  accountId: string;
+  from: Date;
+  to: Date;
+  granularity: endpointsTypes.CashFlowGranularity;
+}
+
+export const getAccountAnalytics = async ({
+  accountId,
+  from,
+  to,
+  granularity,
+}: GetAccountAnalyticsParams): Promise<endpointsTypes.GetAccountAnalyticsResponse> =>
+  api.get('/stats/account-analytics', {
+    accountId,
+    granularity,
+    from: formatDate(from),
+    to: formatDate(to),
+  });
+
 interface GetNetWorthDriversParams {
   from: Date;
   to: Date;

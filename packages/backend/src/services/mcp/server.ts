@@ -46,6 +46,9 @@ import { registerGetBudgets } from './tools/get-budgets';
 import { registerGetCashFlow } from './tools/get-cash-flow';
 import { registerGetCategories } from './tools/get-categories';
 import { registerGetExpensesForPeriod } from './tools/get-expenses-for-period';
+import { registerGetFixedIncomeEvents } from './tools/get-fixed-income-events';
+import { registerGetFixedIncomePositionMetrics } from './tools/get-fixed-income-position-metrics';
+import { registerGetFixedIncomePositions } from './tools/get-fixed-income-positions';
 import { registerGetInvestmentTransactions } from './tools/get-investment-transactions';
 import { registerGetPayee } from './tools/get-payee';
 import { registerGetPayees } from './tools/get-payees';
@@ -87,6 +90,7 @@ import { registerUnlinkTransactionsFromSubscription } from './tools/unlink-trans
 import { registerUnlinkTransfer } from './tools/unlink-transfer';
 import { registerUpdateBudget } from './tools/update-budget';
 import { registerUpdateCategory } from './tools/update-category';
+import { registerUpdateFixedIncomePosition } from './tools/update-fixed-income-position';
 import { registerUpdateInvestmentTransaction } from './tools/update-investment-transaction';
 import { registerUpdatePayee } from './tools/update-payee';
 import { registerUpdatePortfolio } from './tools/update-portfolio';
@@ -220,8 +224,12 @@ export function createMcpServer(): McpServer {
   registerDeleteInvestmentTransaction(server);
 
   // Fixed income (fixed deposits, bonds, peer loans)
+  registerGetFixedIncomePositions(server);
+  registerGetFixedIncomeEvents(server);
+  registerGetFixedIncomePositionMetrics(server);
   registerCreateFixedIncomePosition(server);
   registerCreateFixedIncomeEvent(server);
+  registerUpdateFixedIncomePosition(server);
 
   // Portfolio cash transfers
   registerLinkTransactionToPortfolio(server);

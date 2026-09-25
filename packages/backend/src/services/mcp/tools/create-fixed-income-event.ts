@@ -23,6 +23,10 @@ const inputSchema = {
     .optional()
     .describe('Portion of grossAmount that is principal. Defaults to grossAmount for repayment/maturity events'),
   interestComponent: decimalString().nullable().optional().describe('Portion of grossAmount that is interest'),
+  taxWithheld: decimalString()
+    .nullable()
+    .optional()
+    .describe("Tax deducted at source on this event's interest, if any (e.g. TDS on a bond coupon)"),
   currencyCode: currencyCode().describe('ISO 4217 currency code, matching the position currency'),
   cashFlowMode: z
     .nativeEnum(FIXED_INCOME_CASH_FLOW_MODE)
@@ -64,6 +68,7 @@ export function registerCreateFixedIncomeEvent(server: McpServer) {
         grossAmount: args.grossAmount,
         principalComponent: args.principalComponent,
         interestComponent: args.interestComponent,
+        taxWithheld: args.taxWithheld,
         currencyCode: args.currencyCode,
         cashFlowMode: args.cashFlowMode,
         resetsAccrualClock: args.resetsAccrualClock,

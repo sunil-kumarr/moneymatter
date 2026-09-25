@@ -159,12 +159,28 @@
       "description": "Permanently delete an investment transaction and recalculate affected holding (requires finance:delete scope)."
     },
     {
+      "name": "get_fixed_income_positions",
+      "description": "List fixed-income positions (fixed deposits, bonds, peer loans), optionally filtered by portfolio or instrument type."
+    },
+    {
+      "name": "get_fixed_income_events",
+      "description": "List all events recorded on a fixed-income position, oldest first, including amounts, tax withheld, and linked bank transactions."
+    },
+    {
+      "name": "get_fixed_income_position_metrics",
+      "description": "Computed metrics for a fixed-income position: cost basis, accrued interest, current value, realized/unrealized gain, and projected next payout date."
+    },
+    {
       "name": "create_fixed_income_position",
       "description": "Create a fixed-income position (fixed deposit, bond, or peer loan) in a portfolio; auto-creates its initial_investment event (requires finance:write scope)."
     },
     {
       "name": "create_fixed_income_event",
       "description": "Record an event (interest payout, repayment, maturity, writedown, fee) on a fixed-income position (requires finance:write scope)."
+    },
+    {
+      "name": "update_fixed_income_position",
+      "description": "Update an existing fixed-income position's terms, payout account, or metadata; only provided fields change (requires finance:write scope)."
     },
     {
       "name": "link_transaction_to_portfolio",

@@ -16,6 +16,10 @@ export default createController(
     params: z.object({ id: recordId() }),
     body: z.object({
       name: z.string().trim().min(1).max(255).optional(),
+      startDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
       interestRatePct: decimalString().optional(),
       compoundingFrequency: z.nativeEnum(INTEREST_COMPOUNDING_FREQUENCY).nullable().optional(),
       dayCountConvention: z.nativeEnum(DAY_COUNT_CONVENTION).optional(),

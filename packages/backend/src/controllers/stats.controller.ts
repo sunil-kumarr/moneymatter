@@ -22,6 +22,7 @@ import {
   serializeNetWorthHistory,
   serializePivotReport,
   serializeSpendingsByCategories,
+  serializeSpendingsByCategoriesAsList,
   serializeSpendingsByCategoriesByType,
   serializeTotalBalance,
 } from '@root/serializers';
@@ -275,6 +276,42 @@ export const getCashFlow = createController(cashFlowSchema, async ({ user, query
 
   // Serialize: convert cents to decimal for API response
   return { data: serializeCashFlow(result) };
+});
+
+const accountAnalyticsSchema = z.object({
+  query: withDateOrder(
+    z.object({
+      ...dateRange({ required: true }),
+      accountId: recordId(),
+      granularity: z.enum(['monthly', 'biweekly', 'weekly']),
+    }),
+  ),
+});
+
+export const getAccountAnalytics = createController(accountAnalyticsSchema, async ({ user, query }) => {
+  const { id: userId } = user;
+  const { from, to, accountId, granularity } = query;
+
+  const [balanceHistory, spendingsByCategory, cashFlow] = await Promise.all([
+    statsService.getBalanceHistoryForAccount({ userId, accountId, from, to }),
+    statsService.getSpendingsByCategories({
+      userId,
+      accountId,
+      from,
+      to,
+      transactionType: TRANSACTION_TYPES.expense,
+    }),
+    statsService.getCashFlow({ userId, accountId, from, to, granularity }),
+  ]);
+
+  // Serialize: convert cents to decimal for API response
+  return {
+    data: {
+      balanceHistory: serializeBalanceHistory(balanceHistory),
+      spendingsByCategory: serializeSpendingsByCategoriesAsList(spendingsByCategory),
+      cashFlow: serializeCashFlow(cashFlow),
+    },
+  };
 });
 
 const netWorthDriversSchema = z.object({

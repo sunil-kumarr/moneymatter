@@ -101,6 +101,20 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     component: () => import('@/components/widgets/cash-flow-widget/index.vue'),
     needsPeriod: true,
   },
+  'salary-trend': {
+    id: 'salary-trend',
+    name: 'dashboard.widgets.registry.salaryTrend.name',
+    description: 'dashboard.widgets.registry.salaryTrend.description',
+    defaultColSpan: 2,
+    defaultRowSpan: 1,
+    allowedSizes: [
+      { colSpan: 1, rowSpan: 1, label: '1×1' },
+      { colSpan: 2, rowSpan: 1, label: '2×1' },
+      { colSpan: 3, rowSpan: 1, label: '3×1' },
+    ],
+    component: () => import('@/components/widgets/salary-trend/index.vue'),
+    needsPeriod: true,
+  },
   'net-worth': {
     id: 'net-worth',
     name: 'dashboard.widgets.registry.netWorth.name',

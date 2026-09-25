@@ -4,7 +4,7 @@
  * Serializes stats data for API responses.
  * Uses Money.fromCents() for raw cents values from services/aggregates.
  */
-import { endpointsTypes } from '@bt/shared/types';
+import { endpointsTypes, type RecordId } from '@bt/shared/types';
 import { centsToApiDecimal } from '@common/types/money';
 import type Balances from '@models/balances.model';
 import type { CombinedBalanceHistoryItem } from '@services/stats/get-combined-balance-history';
@@ -77,6 +77,23 @@ export function serializeSpendingsByCategories(
   }
 
   return result;
+}
+
+/**
+ * Serialize spendings by categories as a flat list (for the account analytics endpoint,
+ * which pairs it with cash flow/balance history rather than a category-keyed map).
+ */
+export function serializeSpendingsByCategoriesAsList(
+  spendings: endpointsTypes.GetSpendingsByCategoriesReturnType,
+): endpointsTypes.AccountAnalyticsCategoryItem[] {
+  return Object.entries(spendings)
+    .map(([categoryId, spending]) => ({
+      categoryId: categoryId as RecordId,
+      name: spending.name,
+      color: spending.color,
+      amount: centsToApiDecimal(spending.amount),
+    }))
+    .toSorted((a, b) => b.amount - a.amount);
 }
 
 interface SpendingStructureByTypeApiResponse {

@@ -791,6 +791,26 @@ export interface BudgetSpendingStatsResponse {
   };
 }
 
+// Account Analytics (combined stats for a single account's Analytics tab)
+export interface AccountAnalyticsBalancePoint {
+  date: string;
+  amount: number; // decimal
+  accountId: RecordId;
+}
+
+export interface AccountAnalyticsCategoryItem {
+  categoryId: RecordId;
+  name: string;
+  color: string;
+  amount: number; // decimal, positive (expenses only)
+}
+
+export interface GetAccountAnalyticsResponse {
+  balanceHistory: AccountAnalyticsBalancePoint[];
+  spendingsByCategory: AccountAnalyticsCategoryItem[];
+  cashFlow: GetCashFlowResponse;
+}
+
 // Exchange Rates
 export interface ExchangeRatePairQuery extends QueryPayload {
   from: string;

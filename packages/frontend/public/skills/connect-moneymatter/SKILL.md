@@ -80,8 +80,12 @@ page.
 | `create_investment_transaction`         | Record a buy/sell/dividend/fee transaction (`finance:write`)                                                     |
 | `update_investment_transaction`         | Correct a transaction's date, quantity, price, or fees (`finance:write`)                                         |
 | `delete_investment_transaction`         | Delete an investment transaction (`finance:delete`)                                                              |
+| `get_fixed_income_positions`            | List fixed deposits, bonds, and peer loans, optionally filtered by portfolio or instrument type                  |
+| `get_fixed_income_events`               | List events (payouts, repayments, maturity, writedown, fee) recorded on a position, oldest first                 |
+| `get_fixed_income_position_metrics`     | Cost basis, accrued interest, current value, realized/unrealized gain, and projected next payout date            |
 | `create_fixed_income_position`          | Create a fixed deposit, bond, or peer loan; auto-creates its initial_investment event (`finance:write`)          |
 | `create_fixed_income_event`             | Record an interest payout, repayment, maturity, writedown, or fee on a position (`finance:write`)                |
+| `update_fixed_income_position`          | Update a position's terms, payout account, or metadata; only provided fields change (`finance:write`)            |
 | `link_transaction_to_portfolio`         | Link an existing transaction to a portfolio as a cash transfer (`finance:write`)                                 |
 | `unlink_transaction_from_portfolio`     | Remove a transaction's portfolio link and reverse the cash change (`finance:write`)                              |
 | `transfer_account_to_portfolio`         | Move cash from an account into a portfolio (`finance:write`)                                                     |
