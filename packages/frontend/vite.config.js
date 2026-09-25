@@ -82,6 +82,12 @@ export default async ({ mode }) => {
     host: process.env.HOST,
     ...(httpsConfig && { https: httpsConfig }),
     hmr: process.env.HMR_HOST ? { host: process.env.HMR_HOST } : true,
+    // Colima's virtiofs mount (and some other VM-backed Docker setups) doesn't
+    // forward host filesystem change notifications into the container, so
+    // native fs-event watching never fires. Polling works regardless of mount type.
+    watch: {
+      usePolling: true,
+    },
     proxy: {
       '^/api/': backendProxy,
       '^/mcp(\\?|$)': backendProxy,
