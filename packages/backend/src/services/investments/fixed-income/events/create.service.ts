@@ -18,6 +18,7 @@ interface CreateFixedIncomeEventParams {
   grossAmount?: string | null;
   principalComponent?: string | null;
   interestComponent?: string | null;
+  taxWithheld?: string | null;
   currencyCode: string;
   cashFlowMode?: FIXED_INCOME_CASH_FLOW_MODE;
   resetsAccrualClock?: boolean;
@@ -34,6 +35,7 @@ const createFixedIncomeEventImpl = async (params: CreateFixedIncomeEventParams) 
     grossAmount = null,
     principalComponent = null,
     interestComponent = null,
+    taxWithheld = null,
     currencyCode,
     cashFlowMode = FIXED_INCOME_CASH_FLOW_MODE.none,
     resetsAccrualClock = true,
@@ -80,6 +82,7 @@ const createFixedIncomeEventImpl = async (params: CreateFixedIncomeEventParams) 
     principalComponent: principalComponent !== null ? Money.fromDecimal(principalComponent) : null,
     interestComponent: interestComponent !== null ? Money.fromDecimal(interestComponent) : null,
     principalReturnedThisEvent,
+    taxWithheld: taxWithheld !== null ? Money.fromDecimal(taxWithheld) : null,
     currencyCode,
     cashFlowMode,
     resetsAccrualClock,

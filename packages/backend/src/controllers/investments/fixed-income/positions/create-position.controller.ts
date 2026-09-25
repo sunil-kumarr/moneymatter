@@ -1,4 +1,6 @@
 import {
+  BOND_TYPE,
+  CREDIT_RATING,
   DAY_COUNT_CONVENTION,
   FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_CASH_FLOW_MODE,
@@ -34,6 +36,9 @@ export default createController(
       interestPayoutFrequency: z.nativeEnum(INTEREST_PAYOUT_FREQUENCY).optional(),
       maturityInstruction: z.nativeEnum(FIXED_DEPOSIT_MATURITY_INSTRUCTION).optional(),
       payoutAccountId: recordId().nullable().optional(),
+      bondType: z.nativeEnum(BOND_TYPE).nullable().optional(),
+      creditRating: z.nativeEnum(CREDIT_RATING).nullable().optional(),
+      ytmPct: decimalString().nullable().optional(),
       notes: z.string().nullable().optional(),
       initialInvestment: z
         .object({

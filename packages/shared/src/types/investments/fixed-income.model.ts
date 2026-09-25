@@ -59,6 +59,25 @@ export enum FIXED_DEPOSIT_MATURITY_INSTRUCTION {
   auto_renew_principal_and_interest = 'auto_renew_principal_and_interest',
 }
 
+export enum BOND_TYPE {
+  corporate = 'corporate',
+  government = 'government',
+}
+
+export enum CREDIT_RATING {
+  AAA = 'AAA',
+  AA_plus = 'AA_plus',
+  AA = 'AA',
+  AA_minus = 'AA_minus',
+  A_plus = 'A_plus',
+  A = 'A',
+  A_minus = 'A_minus',
+  BBB_plus = 'BBB_plus',
+  BBB = 'BBB',
+  BBB_minus = 'BBB_minus',
+  BB_and_below = 'BB_and_below',
+}
+
 /**
  * Shared with the Venture domain's cash-flow model (linked to a wallet
  * transaction, tracked without a linked transaction, or not tracked at all).
@@ -89,6 +108,9 @@ export interface FixedIncomePositionModel {
   interestPayoutFrequency: INTEREST_PAYOUT_FREQUENCY;
   maturityInstruction: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
   payoutAccountId: string | null;
+  bondType: BOND_TYPE | null;
+  creditRating: CREDIT_RATING | null;
+  ytmPct: string | null;
   notes: string | null;
   metaData: Record<string, unknown> | null;
   createdAt: Date;
@@ -113,6 +135,7 @@ export interface FixedIncomeEventModel {
   principalComponent: string | null;
   interestComponent: string | null;
   principalReturnedThisEvent: string | null;
+  taxWithheld: string | null;
   currencyCode: string;
   cashFlowMode: FIXED_INCOME_CASH_FLOW_MODE;
   resetsAccrualClock: boolean;
@@ -158,4 +181,7 @@ export interface FixedIncomePositionMetricsModel {
   unrealizedGain: string;
   realizedGainPct: string | null;
   unrealizedGainPct: string | null;
+  // Next projected interest payout date, or null when the payout frequency is
+  // cumulative (interest reinvested, nothing paid until maturity) or the position is closed.
+  nextPayoutDate: string | null;
 }

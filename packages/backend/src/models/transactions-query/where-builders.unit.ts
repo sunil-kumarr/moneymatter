@@ -1,12 +1,14 @@
-import { TRANSACTION_TRANSFER_NATURE } from '@bt/shared/types';
+import { TRANSACTION_TRANSFER_NATURE, TRANSACTION_TYPES } from '@bt/shared/types';
 import { describe, expect, it } from '@jest/globals';
 import { Op } from 'sequelize';
 
 import {
+  amountMatchForSearchTerm,
   balanceAdjustmentsWhere,
   capPolicy,
   completenessToPagination,
   composeWhere,
+  dateMatchForSearchTerm,
   plannedWhere,
   transfersWhere,
 } from './where-builders';
@@ -145,6 +147,63 @@ describe('completenessToPagination', () => {
     expect(completenessToPagination({ completeness: { cap: { limit: 5000, onTruncated: 'log' } } })).toEqual({
       limit: 5000,
     });
+  });
+});
+
+describe('amountMatchForSearchTerm', () => {
+  it('matches either sign for a bare number', () => {
+    expect(amountMatchForSearchTerm({ term: '10' })).toEqual({ amount: 1000 });
+  });
+
+  it('narrows to income for a "+" prefixed term', () => {
+    expect(amountMatchForSearchTerm({ term: '+10' })).toEqual({
+      amount: 1000,
+      transactionType: TRANSACTION_TYPES.income,
+    });
+  });
+
+  it('narrows to expense for a "-" prefixed term', () => {
+    expect(amountMatchForSearchTerm({ term: '-10' })).toEqual({
+      amount: 1000,
+      transactionType: TRANSACTION_TYPES.expense,
+    });
+  });
+
+  it('handles decimal amounts', () => {
+    expect(amountMatchForSearchTerm({ term: '-10.50' })).toEqual({
+      amount: 1050,
+      transactionType: TRANSACTION_TYPES.expense,
+    });
+  });
+
+  it('returns null for non-numeric terms', () => {
+    expect(amountMatchForSearchTerm({ term: 'lunch' })).toBeNull();
+  });
+
+  it('returns null for a bare sign with no digits', () => {
+    expect(amountMatchForSearchTerm({ term: '-' })).toBeNull();
+  });
+});
+
+describe('dateMatchForSearchTerm', () => {
+  it('matches the whole day for an ISO date term', () => {
+    expect(dateMatchForSearchTerm({ term: '2024-01-15' })).toEqual({
+      time: {
+        [Op.between]: [new Date('2024-01-15T00:00:00.000Z'), new Date('2024-01-15T23:59:59.999Z')],
+      },
+    });
+  });
+
+  it('matches a slash-formatted date term', () => {
+    expect(dateMatchForSearchTerm({ term: '01/15/2024' })).toEqual({
+      time: {
+        [Op.between]: [new Date('2024-01-15T00:00:00.000Z'), new Date('2024-01-15T23:59:59.999Z')],
+      },
+    });
+  });
+
+  it('returns null for a non-date term', () => {
+    expect(dateMatchForSearchTerm({ term: 'lunch' })).toBeNull();
   });
 });
 

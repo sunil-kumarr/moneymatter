@@ -12,11 +12,15 @@ import { isPositiveDecimal } from '@/common/utils/validators';
 import { NotificationType, useNotificationCenter } from '@/components/notification-center';
 import {
   useCreateFixedIncomePosition,
+  useFixedIncomePositionMetrics,
   useUpdateFixedIncomePosition,
 } from '@/composable/data-queries/fixed-income/positions';
+import { useFormatCurrency } from '@/composable/formatters';
 import { useAccountsStore, useCurrenciesStore } from '@/stores';
 import { AccountModel } from '@bt/shared/types';
 import {
+  BOND_TYPE,
+  CREDIT_RATING,
   DAY_COUNT_CONVENTION,
   FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_INSTRUMENT_TYPE,
@@ -24,7 +28,7 @@ import {
   INTEREST_PAYOUT_FREQUENCY,
   type FixedIncomePositionModel,
 } from '@bt/shared/types/investments';
-import { format } from 'date-fns';
+import { format, formatDuration, intervalToDuration } from 'date-fns';
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -45,6 +49,9 @@ const emit = defineEmits<Emit>();
 
 const createMutation = useCreateFixedIncomePosition();
 const updateMutation = useUpdateFixedIncomePosition();
+const { formatAmountByCurrencyCode } = useFormatCurrency();
+
+const { data: metrics } = useFixedIncomePositionMetrics(computed(() => props.position?.id));
 
 const currenciesStore = useCurrenciesStore();
 const userCurrencies = computed(() => currenciesStore.currencies);
@@ -80,6 +87,25 @@ const interestPayoutOptions = [
   { value: INTEREST_PAYOUT_FREQUENCY.annually, label: 'Annually' },
 ];
 
+const bondTypeOptions = [
+  { value: BOND_TYPE.corporate, label: 'Corporate' },
+  { value: BOND_TYPE.government, label: 'Government' },
+];
+
+const creditRatingOptions = [
+  { value: CREDIT_RATING.AAA, label: 'AAA' },
+  { value: CREDIT_RATING.AA_plus, label: 'AA+' },
+  { value: CREDIT_RATING.AA, label: 'AA' },
+  { value: CREDIT_RATING.AA_minus, label: 'AA-' },
+  { value: CREDIT_RATING.A_plus, label: 'A+' },
+  { value: CREDIT_RATING.A, label: 'A' },
+  { value: CREDIT_RATING.A_minus, label: 'A-' },
+  { value: CREDIT_RATING.BBB_plus, label: 'BBB+' },
+  { value: CREDIT_RATING.BBB, label: 'BBB' },
+  { value: CREDIT_RATING.BBB_minus, label: 'BBB-' },
+  { value: CREDIT_RATING.BB_and_below, label: 'BB & below' },
+];
+
 const maturityInstructionOptions = [
   { value: FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account, label: 'Credit to Account' },
   { value: FIXED_DEPOSIT_MATURITY_INSTRUCTION.auto_renew_principal, label: 'Auto-Renew Principal' },
@@ -112,10 +138,22 @@ const form = reactive({
   interestPayoutFrequency: INTEREST_PAYOUT_FREQUENCY.cumulative as INTEREST_PAYOUT_FREQUENCY,
   maturityInstruction: FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account as FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   payoutAccount: null as AccountModel | null,
+  bondType: BOND_TYPE.corporate as BOND_TYPE,
+  creditRating: null as CREDIT_RATING | null,
+  ytmPct: '',
   notes: '',
 });
 
 const isFixedDeposit = computed(() => form.instrumentType === FIXED_INCOME_INSTRUMENT_TYPE.fixed_deposit);
+const isBond = computed(() => form.instrumentType === FIXED_INCOME_INSTRUMENT_TYPE.bond);
+
+// Read-only, derived purely from the dates already in the form — never sent to the API.
+const tenureLabel = computed(() => {
+  if (!(form.startDate instanceof Date) || !form.expectedEndDate) return null;
+  const duration = intervalToDuration({ start: form.startDate, end: form.expectedEndDate });
+  const label = formatDuration(duration, { format: ['years', 'months', 'days'] });
+  return label || '0 days';
+});
 
 // Peer loans only support simple interest — the backend rejects any other
 // compounding frequency for this instrument type.
@@ -149,6 +187,9 @@ watch(
     form.interestPayoutFrequency = p.interestPayoutFrequency;
     form.maturityInstruction = p.maturityInstruction;
     form.payoutAccount = (p.payoutAccountId && accountsStore.accountsRecord[p.payoutAccountId]) || null;
+    form.bondType = p.bondType ?? BOND_TYPE.corporate;
+    form.creditRating = p.creditRating;
+    form.ytmPct = p.ytmPct != null ? String(p.ytmPct) : '';
     form.notes = p.notes ?? '';
   },
   { immediate: true },
@@ -186,6 +227,9 @@ const onSubmit = async () => {
           interestPayoutFrequency: form.interestPayoutFrequency,
           maturityInstruction: form.maturityInstruction,
           payoutAccountId: form.payoutAccount?.id ?? null,
+          bondType: isBond.value ? form.bondType : null,
+          creditRating: isBond.value ? form.creditRating : null,
+          ytmPct: isBond.value ? toStr(form.ytmPct) || null : null,
           notes: toStr(form.notes) || null,
         },
       });
@@ -206,6 +250,9 @@ const onSubmit = async () => {
         interestPayoutFrequency: form.interestPayoutFrequency,
         maturityInstruction: form.maturityInstruction,
         payoutAccountId: form.payoutAccount?.id ?? null,
+        bondType: isBond.value ? form.bondType : null,
+        creditRating: isBond.value ? form.creditRating : null,
+        ytmPct: isBond.value ? toStr(form.ytmPct) || null : null,
         notes: toStr(form.notes) || null,
       });
     }
@@ -275,23 +322,60 @@ const onSubmit = async () => {
       />
     </div>
 
+    <div v-if="isBond" class="grid grid-cols-2 gap-4">
+      <FieldLabel label="Bond Type">
+        <Select.Select v-model="form.bondType" :disabled="isPending">
+          <Select.SelectTrigger>
+            <Select.SelectValue />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            <Select.SelectItem v-for="o in bondTypeOptions" :key="o.value" :value="o.value">
+              {{ o.label }}
+            </Select.SelectItem>
+          </Select.SelectContent>
+        </Select.Select>
+      </FieldLabel>
+      <FieldLabel label="Credit Rating">
+        <Select.Select
+          :model-value="form.creditRating ?? undefined"
+          :disabled="isPending"
+          @update:model-value="(v) => (form.creditRating = (v as CREDIT_RATING) ?? null)"
+        >
+          <Select.SelectTrigger>
+            <Select.SelectValue placeholder="Not rated" />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            <Select.SelectItem v-for="o in creditRatingOptions" :key="o.value" :value="o.value">
+              {{ o.label }}
+            </Select.SelectItem>
+          </Select.SelectContent>
+        </Select.Select>
+      </FieldLabel>
+    </div>
+
     <div class="grid grid-cols-2 gap-4">
-      <DateField v-model="form.startDate" label="Start Date" :disabled="isPending || isEditing" />
+      <DateField
+        v-model="form.startDate"
+        :label="isBond ? 'Invested On' : 'Start Date'"
+        :disabled="isPending || isEditing"
+      />
       <DateField
         :model-value="form.expectedEndDate ?? undefined"
-        label="Expected End Date"
+        :label="isBond ? 'Maturing On' : 'Expected End Date'"
         :calendar-options="{ minDate: form.startDate }"
         :disabled="isPending"
         @update:model-value="(v: Date | null) => (form.expectedEndDate = v)"
       />
     </div>
 
+    <p v-if="tenureLabel" class="text-muted-foreground text-sm">Tenure: {{ tenureLabel }}</p>
+
     <div class="grid grid-cols-2 gap-4">
       <InputField
         v-model="form.interestRatePct"
         type="number"
         step="0.01"
-        label="Interest Rate (%)"
+        :label="isBond ? 'Coupon Rate (%)' : 'Interest Rate (%)'"
         :disabled="isPending"
         :error-message="!isPercentInputValid(form.interestRatePct) ? 'Enter a value between 0 and 100' : undefined"
       />
@@ -312,6 +396,17 @@ const onSubmit = async () => {
       </FieldLabel>
     </div>
 
+    <InputField
+      v-if="isBond"
+      v-model="form.ytmPct"
+      type="number"
+      step="0.01"
+      label="YTM (%)"
+      placeholder="Yield to maturity"
+      :disabled="isPending"
+      :error-message="form.ytmPct && !isPercentInputValid(form.ytmPct) ? 'Enter a value between 0 and 100' : undefined"
+    />
+
     <FieldLabel v-if="!isFixedDeposit" label="Day Count Convention">
       <Select.Select v-model="form.dayCountConvention" :disabled="isPending">
         <Select.SelectTrigger>
@@ -325,8 +420,8 @@ const onSubmit = async () => {
       </Select.Select>
     </FieldLabel>
 
-    <div v-if="isFixedDeposit" class="grid grid-cols-2 gap-4">
-      <FieldLabel label="Interest Payout">
+    <div v-if="isFixedDeposit || isBond" class="grid grid-cols-2 gap-4">
+      <FieldLabel :label="isBond ? 'Payout Schedule' : 'Interest Payout'">
         <Select.Select v-model="form.interestPayoutFrequency" :disabled="isPending">
           <Select.SelectTrigger>
             <Select.SelectValue />
@@ -338,7 +433,7 @@ const onSubmit = async () => {
           </Select.SelectContent>
         </Select.Select>
       </FieldLabel>
-      <FieldLabel label="Maturity Instructions">
+      <FieldLabel v-if="isFixedDeposit" label="Maturity Instructions">
         <Select.Select v-model="form.maturityInstruction" :disabled="isPending">
           <Select.SelectTrigger>
             <Select.SelectValue />
@@ -350,6 +445,21 @@ const onSubmit = async () => {
           </Select.SelectContent>
         </Select.Select>
       </FieldLabel>
+    </div>
+
+    <div v-if="isEditing && metrics" class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-2 rounded-md p-3 text-sm">
+      <span class="text-muted-foreground">Current Value</span>
+      <span class="text-right font-medium">{{
+        formatAmountByCurrencyCode(Number(metrics.currentValue), form.currencyCode)
+      }}</span>
+      <span class="text-muted-foreground">Gains</span>
+      <span class="text-app-income-color text-right font-medium">{{
+        formatAmountByCurrencyCode(Number(metrics.pnlAbsolute), form.currencyCode)
+      }}</span>
+      <template v-if="metrics.nextPayoutDate">
+        <span class="text-muted-foreground">Next Payout Date</span>
+        <span class="text-right font-medium">{{ format(parseApiDate(metrics.nextPayoutDate), 'MMM d, yyyy') }}</span>
+      </template>
     </div>
 
     <AccountSelectField

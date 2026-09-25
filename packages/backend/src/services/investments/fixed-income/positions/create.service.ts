@@ -1,4 +1,6 @@
 import {
+  BOND_TYPE,
+  CREDIT_RATING,
   DAY_COUNT_CONVENTION,
   FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_CASH_FLOW_MODE,
@@ -42,6 +44,9 @@ interface CreateFixedIncomePositionParams {
   interestPayoutFrequency?: INTEREST_PAYOUT_FREQUENCY;
   maturityInstruction?: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
   payoutAccountId?: string | null;
+  bondType?: BOND_TYPE | null;
+  creditRating?: CREDIT_RATING | null;
+  ytmPct?: string | null;
   notes?: string | null;
   initialInvestment?: InitialInvestmentInput;
 }
@@ -65,6 +70,9 @@ const createFixedIncomePositionImpl = async (params: CreateFixedIncomePositionPa
     interestPayoutFrequency = INTEREST_PAYOUT_FREQUENCY.cumulative,
     maturityInstruction = FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account,
     payoutAccountId = null,
+    bondType = null,
+    creditRating = null,
+    ytmPct = null,
     notes = null,
   } = params;
 
@@ -118,6 +126,9 @@ const createFixedIncomePositionImpl = async (params: CreateFixedIncomePositionPa
     interestPayoutFrequency,
     maturityInstruction,
     payoutAccountId,
+    bondType,
+    creditRating,
+    ytmPct,
     notes,
   });
 

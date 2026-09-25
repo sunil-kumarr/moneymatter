@@ -1,4 +1,7 @@
-import { TRANSACTION_TRANSFER_NATURE } from '@bt/shared/types';
+import { TRANSACTION_TRANSFER_NATURE, TRANSACTION_TYPES } from '@bt/shared/types';
+import { Money } from '@common/types/money';
+import { parseDate } from '@services/import-export/core/parse/parse-date';
+import { parseDecimalAmount } from '@services/import-export/core/parse/parse-decimal-amount';
 import { Op, WhereOptions, literal } from 'sequelize';
 
 import { BalanceAdjustmentsPolicy, CapPolicy, CompletenessPolicy, PlannedPolicy, TransfersPolicy } from './policies';
@@ -27,6 +30,40 @@ export const transfersWhere = ({ policy }: { policy?: TransfersPolicy }): WhereO
   if (policy === 'only') return { transferNature: { [Op.ne]: TRANSACTION_TRANSFER_NATURE.not_transfer } };
 
   return { transferNature: { [Op.in]: policy.natures } };
+};
+
+/**
+ * Reads a search box term as a signed amount ("+10", "-10.50", "10"). `amount` is always
+ * stored positive (sign lives on `transactionType`), so a leading `+`/`-` narrows to
+ * income/expense while a bare number matches either. Null when the term isn't a number.
+ */
+export const amountMatchForSearchTerm = ({ term }: { term: string }): WhereOptions | null => {
+  const signMatch = term.match(/^([+-])?(.+)$/);
+  if (!signMatch) return null;
+  const [, sign, rest] = signMatch;
+  if (!rest) return null;
+
+  const decimal = parseDecimalAmount({ raw: rest });
+  if (decimal === null) return null;
+
+  const cents = Money.fromDecimal(decimal).toCents();
+  const amountCondition = { amount: cents };
+
+  if (sign === '+') return { ...amountCondition, transactionType: TRANSACTION_TYPES.income };
+  if (sign === '-') return { ...amountCondition, transactionType: TRANSACTION_TYPES.expense };
+  return amountCondition;
+};
+
+/** Reads a search box term as a date ("2024-01-15", "15/03/2024") and matches that whole day. */
+export const dateMatchForSearchTerm = ({ term }: { term: string }): WhereOptions | null => {
+  const iso = parseDate(term);
+  if (!iso) return null;
+
+  return {
+    time: {
+      [Op.between]: [new Date(`${iso}T00:00:00.000Z`), new Date(`${iso}T23:59:59.999Z`)],
+    },
+  };
 };
 
 export const isEmptyFragment = (fragment: unknown): boolean => {

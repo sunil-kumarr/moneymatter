@@ -6,6 +6,7 @@ import Big from 'big.js';
 
 import { computeAccruedInterest } from './compute-accrued-interest';
 import { computeCostBasis } from './compute-cost-basis';
+import { computeNextPayoutDate } from './compute-next-payout-date';
 
 const CLOSED_STATUSES: readonly FIXED_INCOME_POSITION_STATUS[] = [
   FIXED_INCOME_POSITION_STATUS.fully_repaid,
@@ -38,6 +39,7 @@ export async function getFixedIncomePositionMetrics({
     accruedUnpaidInterest,
     totalInterestReceived,
     realizedInterestReceived,
+    accrualPoint,
   } = computeAccruedInterest({
     principal: position.principal.toDecimalString(10),
     interestRatePct: position.interestRatePct,
@@ -70,6 +72,12 @@ export async function getFixedIncomePositionMetrics({
     ? new Big(unrealizedGain).div(costBasis).times(100).toFixed(6)
     : null;
 
+  const nextPayoutDate = computeNextPayoutDate({
+    accrualPoint,
+    interestPayoutFrequency: position.interestPayoutFrequency,
+    status: position.status,
+  });
+
   return {
     costBasis,
     principalOutstanding,
@@ -83,5 +91,6 @@ export async function getFixedIncomePositionMetrics({
     unrealizedGain,
     realizedGainPct,
     unrealizedGainPct,
+    nextPayoutDate,
   };
 }

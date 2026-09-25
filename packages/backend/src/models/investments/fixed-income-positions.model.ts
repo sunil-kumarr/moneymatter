@@ -1,5 +1,7 @@
 import { RecordId } from '@bt/shared/types';
 import {
+  BOND_TYPE,
+  CREDIT_RATING,
   DAY_COUNT_CONVENTION,
   FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_INSTRUMENT_TYPE,
@@ -114,6 +116,17 @@ export default class FixedIncomePositions extends Model {
   @Index
   @Column({ type: DataType.UUID, allowNull: true })
   payoutAccountId!: RecordId | null;
+
+  // Bond-only attributes; null for fixed_deposit/peer_loan positions.
+  @Column({ type: DataType.STRING(16), allowNull: true })
+  bondType!: BOND_TYPE | null;
+
+  @Column({ type: DataType.STRING(16), allowNull: true })
+  creditRating!: CREDIT_RATING | null;
+
+  /** Whole-number annual percent, same convention as `interestRatePct`. */
+  @Column({ type: DataType.DECIMAL(10, 6), allowNull: true })
+  ytmPct!: string | null;
 
   @Column({ type: DataType.TEXT, allowNull: true })
   notes!: string | null;

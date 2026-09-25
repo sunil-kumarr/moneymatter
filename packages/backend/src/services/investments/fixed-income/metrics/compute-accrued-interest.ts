@@ -48,6 +48,8 @@ interface AccruedInterestResult {
   accruedUnpaidInterest: string;
   totalInterestReceived: string;
   realizedInterestReceived: string;
+  /** Date (YYYY-MM-DD) the unpaid-interest clock last reset from — the anchor for projecting the next payout date. */
+  accrualPoint: string;
 }
 
 function computeSegmentInterest({
@@ -116,7 +118,7 @@ export function computeAccruedInterest({
   events: readonly FixedIncomeEvents[];
   asOfDate: Date;
 }): AccruedInterestResult {
-  const sortedEvents = [...events].sort((a, b) => {
+  const sortedEvents = [...events].toSorted((a, b) => {
     const dateCmp = a.eventDate.localeCompare(b.eventDate);
     if (dateCmp !== 0) return dateCmp;
     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -211,5 +213,6 @@ export function computeAccruedInterest({
     accruedUnpaidInterest: unpaidInterest.toFixed(10),
     totalInterestReceived: totalInterestReceived.toFixed(10),
     realizedInterestReceived: realizedInterestReceived.toFixed(10),
+    accrualPoint: accrualPoint.toISOString().slice(0, 10),
   };
 }

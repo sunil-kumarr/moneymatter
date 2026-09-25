@@ -14,6 +14,7 @@ export default createController(
       grossAmount: decimalString().nullable().optional(),
       principalComponent: decimalString().nullable().optional(),
       interestComponent: decimalString().nullable().optional(),
+      taxWithheld: decimalString().nullable().optional(),
       resetsAccrualClock: z.boolean().optional(),
       notes: z.string().nullable().optional(),
     }),

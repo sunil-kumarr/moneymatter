@@ -13,6 +13,7 @@ interface UpdateFixedIncomeEventParams {
   grossAmount?: string | null;
   principalComponent?: string | null;
   interestComponent?: string | null;
+  taxWithheld?: string | null;
   resetsAccrualClock?: boolean;
   notes?: string | null;
 }
@@ -43,6 +44,9 @@ const updateFixedIncomeEventImpl = async (params: UpdateFixedIncomeEventParams) 
   }
   if (rest.interestComponent !== undefined) {
     update.interestComponent = rest.interestComponent !== null ? Money.fromDecimal(rest.interestComponent) : null;
+  }
+  if (rest.taxWithheld !== undefined) {
+    update.taxWithheld = rest.taxWithheld !== null ? Money.fromDecimal(rest.taxWithheld) : null;
   }
   if (rest.resetsAccrualClock !== undefined) update.resetsAccrualClock = rest.resetsAccrualClock;
   if (notes !== undefined) update.notes = notes;

@@ -53,6 +53,10 @@ export default class FixedIncomeEvents extends Model {
   @Column({ type: DataType.DECIMAL(20, 10), allowNull: true })
   principalReturnedThisEvent!: string | null;
 
+  /** Tax deducted at source on this event's interest, if any (e.g. TDS on a bond coupon). */
+  @MoneyField({ storage: 'decimal', precision: 20, scale: 10, allowNull: true })
+  declare taxWithheld: Money | null;
+
   @ForeignKey(() => Currencies)
   @Index
   @Column({ type: DataType.STRING(3), allowNull: false })

@@ -1,4 +1,6 @@
 import {
+  BOND_TYPE,
+  CREDIT_RATING,
   DAY_COUNT_CONVENTION,
   FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   INTEREST_COMPOUNDING_FREQUENCY,
@@ -25,6 +27,9 @@ interface UpdateFixedIncomePositionParams {
   interestPayoutFrequency?: INTEREST_PAYOUT_FREQUENCY;
   maturityInstruction?: FIXED_DEPOSIT_MATURITY_INSTRUCTION;
   payoutAccountId?: string | null;
+  bondType?: BOND_TYPE | null;
+  creditRating?: CREDIT_RATING | null;
+  ytmPct?: string | null;
   notes?: string | null;
 }
 

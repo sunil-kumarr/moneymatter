@@ -46,10 +46,12 @@ import {
 // `where-builders` is model-free by design, so the model can share the boundary's policy
 // clauses without an import cycle through `transactions-query/index`.
 import {
+  amountMatchForSearchTerm,
   balanceAdjustmentsWhere,
   callerFrame,
   capPolicy,
   completenessToPagination,
+  dateMatchForSearchTerm,
   isEmptyFragment,
   plannedWhere,
 } from '@models/transactions-query/where-builders';
@@ -1198,15 +1200,22 @@ export const findWithFilters = async ({
     };
   }
 
-  // General search box: note OR payee name, case-insensitive substring match. Payee
-  // name lives on a related table, so it's matched via a correlated subquery literal
-  // (same SQL the payeeName sort field uses) rather than a join.
+  // General search box: note OR payee name (case-insensitive substring), plus, when a term
+  // reads as an amount ("10", "+10", "-10.50") or a date ("2024-01-15"), an exact match on
+  // that amount/day. Payee name lives on a related table, so it's matched via a correlated
+  // subquery literal (same SQL the payeeName sort field uses) rather than a join.
   if (search && search.length > 0) {
     const payeeNameLiteral = literal(`(SELECT "name" FROM "Payees" WHERE "Payees"."id" = "Transactions"."payeeId")`);
     pushAndCondition({
       [Op.or]: [
         ...search.map((term) => ({ note: { [Op.iLike]: `%${term}%` } })),
         ...search.map((term) => sequelizeWhere(payeeNameLiteral, { [Op.iLike]: `%${term}%` })),
+        ...search
+          .map((term) => amountMatchForSearchTerm({ term }))
+          .filter((condition): condition is WhereOptions<Transactions> => condition !== null),
+        ...search
+          .map((term) => dateMatchForSearchTerm({ term }))
+          .filter((condition): condition is WhereOptions<Transactions> => condition !== null),
       ],
     });
   }

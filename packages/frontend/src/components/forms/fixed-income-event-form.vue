@@ -57,6 +57,7 @@ const form = reactive({
   grossAmount: '',
   principalComponent: '',
   interestComponent: '',
+  taxWithheld: '',
   resetsAccrualClock: true,
   notes: '',
 });
@@ -88,6 +89,7 @@ const onSubmit = async () => {
         grossAmount: isWritedown.value ? null : form.grossAmount || null,
         principalComponent: form.principalComponent || null,
         interestComponent: form.interestComponent || null,
+        taxWithheld: isInterestAccrualPayout.value ? form.taxWithheld || null : null,
         cashFlowMode: FIXED_INCOME_CASH_FLOW_MODE.out_of_wallet,
         resetsAccrualClock: isInterestAccrualPayout.value ? form.resetsAccrualClock : undefined,
         notes: form.notes || null,
@@ -147,6 +149,16 @@ const onSubmit = async () => {
         :disabled="isPending"
       />
     </div>
+
+    <InputField
+      v-if="isInterestAccrualPayout"
+      v-model="form.taxWithheld"
+      type="number"
+      step="any"
+      label="Interest Paid to Govt (TDS)"
+      placeholder="Optional — tax withheld on this payout"
+      :disabled="isPending"
+    />
 
     <label v-if="isInterestAccrualPayout" class="flex items-start gap-2 text-sm">
       <Checkbox v-model="form.resetsAccrualClock" :disabled="isPending" class="mt-0.5" />
