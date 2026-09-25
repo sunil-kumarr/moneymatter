@@ -80,6 +80,8 @@ page.
 | `create_investment_transaction`         | Record a buy/sell/dividend/fee transaction (`finance:write`)                                                     |
 | `update_investment_transaction`         | Correct a transaction's date, quantity, price, or fees (`finance:write`)                                         |
 | `delete_investment_transaction`         | Delete an investment transaction (`finance:delete`)                                                              |
+| `create_fixed_income_position`          | Create a fixed deposit, bond, or peer loan; auto-creates its initial_investment event (`finance:write`)          |
+| `create_fixed_income_event`             | Record an interest payout, repayment, maturity, writedown, or fee on a position (`finance:write`)                |
 | `link_transaction_to_portfolio`         | Link an existing transaction to a portfolio as a cash transfer (`finance:write`)                                 |
 | `unlink_transaction_from_portfolio`     | Remove a transaction's portfolio link and reverse the cash change (`finance:write`)                              |
 | `transfer_account_to_portfolio`         | Move cash from an account into a portfolio (`finance:write`)                                                     |
@@ -167,6 +169,11 @@ multi-currency data.
   bank transaction already exists, `transfer_account_to_portfolio` /
   `transfer_portfolio_to_account` to create the transaction alongside the
   transfer, `create_portfolio_cash_transaction` when no account is involved.
+- Fixed-income positions (fixed deposits, bonds, peer loans) are a separate,
+  event-sourced dataset from investment transactions. `create_fixed_income_position`
+  auto-creates the position's `initial_investment` event; every later cash
+  movement — interest payout, repayment, maturity, writedown, fee — is a
+  separate `create_fixed_income_event` call against that `positionId`.
 
 ## Troubleshooting
 

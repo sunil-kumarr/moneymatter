@@ -15,6 +15,8 @@ import { registerBulkUpdateTransactions } from './tools/bulk-update-transactions
 import { registerCreateAttachmentUploadUrl } from './tools/create-attachment-upload-url';
 import { registerCreateBudget } from './tools/create-budget';
 import { registerCreateCategory } from './tools/create-category';
+import { registerCreateFixedIncomeEvent } from './tools/create-fixed-income-event';
+import { registerCreateFixedIncomePosition } from './tools/create-fixed-income-position';
 import { registerCreateInvestmentTransaction } from './tools/create-investment-transaction';
 import { registerCreatePayee } from './tools/create-payee';
 import { registerCreatePortfolio } from './tools/create-portfolio';
@@ -216,6 +218,10 @@ export function createMcpServer(): McpServer {
   registerCreateInvestmentTransaction(server);
   registerUpdateInvestmentTransaction(server);
   registerDeleteInvestmentTransaction(server);
+
+  // Fixed income (fixed deposits, bonds, peer loans)
+  registerCreateFixedIncomePosition(server);
+  registerCreateFixedIncomeEvent(server);
 
   // Portfolio cash transfers
   registerLinkTransactionToPortfolio(server);

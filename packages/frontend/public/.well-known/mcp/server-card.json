@@ -159,6 +159,14 @@
       "description": "Permanently delete an investment transaction and recalculate affected holding (requires finance:delete scope)."
     },
     {
+      "name": "create_fixed_income_position",
+      "description": "Create a fixed-income position (fixed deposit, bond, or peer loan) in a portfolio; auto-creates its initial_investment event (requires finance:write scope)."
+    },
+    {
+      "name": "create_fixed_income_event",
+      "description": "Record an event (interest payout, repayment, maturity, writedown, fee) on a fixed-income position (requires finance:write scope)."
+    },
+    {
       "name": "link_transaction_to_portfolio",
       "description": "Link an existing transaction to a portfolio as a cash transfer (expense = cash in, income = cash out) (requires finance:write scope)."
     },
