@@ -54,3 +54,23 @@ export const bulkUploadPrices = async (payload: BulkUploadPricesPayload): Promis
   const res: BulkUploadPricesResponse = await api.post('/investments/securities/prices/bulk-upload', payload);
   return res;
 };
+
+interface ManualPricePayload {
+  date: string; // YYYY-MM-DD
+  price: number;
+}
+
+interface SecurityPricingRecord {
+  id: string;
+  securityId: string;
+  date: string;
+  priceClose: number;
+  source: string | null;
+}
+
+export const createManualPrice = async ({
+  securityId,
+  ...payload
+}: ManualPricePayload & { securityId: string }): Promise<SecurityPricingRecord> => {
+  return api.post(`/investments/securities/${securityId}/manual-price`, payload);
+};

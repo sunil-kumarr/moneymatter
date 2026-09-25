@@ -371,7 +371,9 @@ const securitiesPricesSyncImpl = async (options: SyncOptions): Promise<Securitie
 export const securitiesPricesStocksDailySync = withLock('lock:sync:securities-prices:stocks', () => {
   const yesterdayMidnightUtc = startOfDayUtc(subDays(new Date(), 1));
   return securitiesPricesSyncImpl({
-    assetClassWhere: { assetClass: { [Op.notIn]: [ASSET_CLASS.crypto] } },
+    // Mutual funds are priced manually (no live NAV provider yet) — excluding
+    // them here keeps the sync from wasting budget on symbols it can't price.
+    assetClassWhere: { assetClass: { [Op.notIn]: [ASSET_CLASS.crypto, ASSET_CLASS.mutual_fund] } },
     forDate: yesterdayMidnightUtc,
     fetchStartDate: subDays(yesterdayMidnightUtc, STOCKS_LOOKBACK_DAYS - 1),
     prepareBars: bucketByUtcDay,

@@ -59,6 +59,7 @@
       <div v-if="portfolio" class="grid gap-6">
         <PortfolioBalance :portfolio-id="portfolioId" />
         <HoldingsSummary :portfolio-id="portfolioId" />
+        <FixedIncomeSummary :portfolio-id="portfolioId" />
         <PortfolioCashBalances :portfolio-id="portfolioId" :portfolio="portfolio" />
       </div>
 
@@ -97,6 +98,7 @@ import { AlertCircleIcon, BriefcaseIcon, ChevronLeftIcon, PencilIcon, Trash2Icon
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import FixedIncomeSummary from './components/fixed-income-summary.vue';
 import HoldingsSummary from './components/holdings-summary.vue';
 import PortfolioBalance from './components/portfolio-balance.vue';
 import PortfolioCashBalances from './components/portfolio-cash-balances.vue';

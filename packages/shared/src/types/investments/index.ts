@@ -1,4 +1,5 @@
 export * from './enums';
+export * from './fixed-income.model';
 export * from './security.model';
 export * from './holding.model';
 export * from './investment-transaction.model';

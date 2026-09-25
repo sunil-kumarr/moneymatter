@@ -29,6 +29,7 @@ import updatePortfolioBalanceController from '@controllers/investments/portfolio
 import getPricesController from '@controllers/investments/prices/get-prices.controller';
 import securitiesSyncController from '@controllers/investments/prices/securities-sync.controller';
 import bulkUploadPricesController from '@controllers/investments/securities/bulk-upload-prices.controller';
+import createManualPriceController from '@controllers/investments/securities/create-manual-price.controller';
 import getAllSecurities from '@controllers/investments/securities/get-all.controller';
 import getPriceUploadInfoController from '@controllers/investments/securities/get-price-upload-info.controller';
 import searchSecuritiesController from '@controllers/investments/securities/search.controller';
@@ -214,6 +215,13 @@ router.post(
   securitiesPricesBulkUploadRateLimit,
   validateEndpoint(bulkUploadPricesController.schema),
   bulkUploadPricesController.handler,
+);
+
+router.post(
+  '/securities/:securityId/manual-price',
+  checkBaseCurrencyLock,
+  validateEndpoint(createManualPriceController.schema),
+  createManualPriceController.handler,
 );
 
 router.get(

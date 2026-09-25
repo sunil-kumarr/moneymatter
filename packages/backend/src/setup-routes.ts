@@ -23,6 +23,7 @@ import categoriesRoutes from './routes/categories.route';
 import modelsCurrenciesRoutes from './routes/currencies.route';
 import demoRoutes from './routes/demo.route';
 import exchangeRatesRoutes from './routes/exchange-rates';
+import fixedIncomeRoutes from './routes/fixed-income.route';
 import githubRoutes from './routes/github.route';
 import aiMappingRoutes from './routes/import-export/ai-mapping.route';
 import batchesRoutes from './routes/import-export/batches.route';
@@ -208,6 +209,7 @@ export function setupRoutes(app: Express) {
   app.use(`${API_PREFIX}/share`, shareRoutes);
   app.use(`${API_PREFIX}/investments`, investmentsRoutes);
   app.use(`${API_PREFIX}/venture`, ventureRoutes);
+  app.use(`${API_PREFIX}/fixed-income`, fixedIncomeRoutes);
   app.use('/mcp', mcpRoutes);
   app.use(`${API_PREFIX}/import`, csvImportExportRoutes);
   app.use(`${API_PREFIX}/import`, statementParserRoutes);

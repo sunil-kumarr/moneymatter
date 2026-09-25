@@ -479,12 +479,14 @@
       "clearSearch": "Очистити пошук",
       "endOfList": "Це все",
       "assetClass": {
-        "crypto": "Криптовалюта"
+        "crypto": "Криптовалюта",
+        "mutualFund": "Пайовий фонд"
       },
       "filters": {
         "all": "Усі",
         "stocks": "Акції",
-        "crypto": "Криптовалюта"
+        "crypto": "Криптовалюта",
+        "mutualFund": "Пайові фонди"
       },
       "marketCapRank": "#{rank}",
       "notifications": {
@@ -492,6 +494,18 @@
         "error": "Не вдалося додати актив."
       },
       "cryptoProviderNotConfigured": "Пошук криптовалют недоступний. Встановіть COINGECKO_API_KEY у змінних середовища, щоб увімкнути його."
+    },
+    "manualNavEntry": {
+      "title": "Оновити NAV",
+      "description": "Введіть останню чисту вартість активів для {symbol}.",
+      "priceLabel": "NAV ({currency})",
+      "dateLabel": "Станом на дату",
+      "cancelButton": "Скасувати",
+      "saveButton": "Зберегти",
+      "notifications": {
+        "success": "NAV оновлено",
+        "error": "Не вдалося оновити NAV"
+      }
     },
     "deleteInvestmentTransaction": {
       "title": "Видалити транзакцію",

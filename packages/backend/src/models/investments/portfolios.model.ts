@@ -4,6 +4,7 @@ import { IdColumn } from '@common/types/id-column';
 import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, Index } from 'sequelize-typescript';
 
 import Users from '../users.model';
+import FixedIncomePositions from './fixed-income-positions.model';
 import Holdings from './holdings.model';
 import InvestmentTransaction from './investment-transaction.model';
 import PortfolioBalances from './portfolio-balances.model';
@@ -67,4 +68,7 @@ export default class Portfolios extends Model {
 
   @HasMany(() => InvestmentTransaction)
   investmentTransactions?: InvestmentTransaction[];
+
+  @HasMany(() => FixedIncomePositions)
+  fixedIncomePositions?: FixedIncomePositions[];
 }

@@ -83,7 +83,12 @@ export class CompositeDataProvider extends BaseSecurityDataProvider {
     const preference = getSearchProviderPreference();
     const cryptoProvider = this.providers.get(SECURITY_PROVIDER.coingecko);
 
-    const stocksRequested = !options?.assetClass || options.assetClass === ASSET_CLASS.stocks;
+    // Mutual funds route through the same stock-provider chain (Yahoo tags
+    // them as MUTUALFUND) rather than a dedicated provider.
+    const stocksRequested =
+      !options?.assetClass ||
+      options.assetClass === ASSET_CLASS.stocks ||
+      options.assetClass === ASSET_CLASS.mutual_fund;
     const cryptoRequested = !options?.assetClass || options.assetClass === ASSET_CLASS.crypto;
 
     if (cryptoRequested && !cryptoProvider) {

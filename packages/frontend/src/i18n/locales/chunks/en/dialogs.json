@@ -479,12 +479,14 @@
       "clearSearch": "Clear search",
       "endOfList": "That's all",
       "assetClass": {
-        "crypto": "Crypto"
+        "crypto": "Crypto",
+        "mutualFund": "Mutual Fund"
       },
       "filters": {
         "all": "All",
         "stocks": "Stocks",
-        "crypto": "Crypto"
+        "crypto": "Crypto",
+        "mutualFund": "Mutual Funds"
       },
       "marketCapRank": "#{rank}",
       "notifications": {
@@ -492,6 +494,18 @@
         "error": "Failed to add holding."
       },
       "cryptoProviderNotConfigured": "Crypto search is unavailable. Set COINGECKO_API_KEY in your environment to enable it."
+    },
+    "manualNavEntry": {
+      "title": "Update NAV",
+      "description": "Enter the latest net asset value for {symbol}.",
+      "priceLabel": "NAV ({currency})",
+      "dateLabel": "As of date",
+      "cancelButton": "Cancel",
+      "saveButton": "Save",
+      "notifications": {
+        "success": "NAV updated",
+        "error": "Failed to update NAV"
+      }
     },
     "deleteInvestmentTransaction": {
       "title": "Delete Transaction",

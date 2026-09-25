@@ -17,10 +17,12 @@ export interface PortfolioSummaryModel {
   totalCashInBaseCurrency: string;
   /** Denominated in `currencyCode` (field name predates display currency). */
   availableCashInBaseCurrency: string;
-  /** Holdings value + cash, denominated in `currencyCode`. */
+  /** Holdings value + fixed income value + cash, denominated in `currencyCode`. */
   totalPortfolioValue: string;
   /** User's base currency, regardless of the portfolio's display currency. */
   baseCurrencyCode: string;
   /** Total portfolio value in the user's base currency; equals totalPortfolioValue when no display currency is set. */
   totalPortfolioValueInBaseCurrency: string;
+  /** Fixed deposit/bond/peer loan current value (principal outstanding + accrued unpaid interest), in the user's base currency. */
+  totalFixedIncomeValueInBaseCurrency: string;
 }

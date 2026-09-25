@@ -31,13 +31,14 @@ const searchTerm = ref('');
 
 // Pill-tab filter: 'all' fans out to all supported providers; specific classes
 // narrow the search server-side and skip the irrelevant provider call.
-type AssetClassFilter = 'all' | ASSET_CLASS.stocks | ASSET_CLASS.crypto;
+type AssetClassFilter = 'all' | ASSET_CLASS.stocks | ASSET_CLASS.crypto | ASSET_CLASS.mutual_fund;
 const assetClassFilter = ref<AssetClassFilter>('all');
 
 const assetClassItems = computed(() => [
   { value: 'all', label: t('dialogs.addSymbols.filters.all') },
   { value: ASSET_CLASS.stocks, label: t('dialogs.addSymbols.filters.stocks') },
   { value: ASSET_CLASS.crypto, label: t('dialogs.addSymbols.filters.crypto') },
+  { value: ASSET_CLASS.mutual_fund, label: t('dialogs.addSymbols.filters.mutualFund') },
 ]);
 
 const debounced = ref('');
@@ -249,6 +250,12 @@ async function addSymbol(sec: SecuritySearchResult) {
                     class="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] font-medium uppercase"
                   >
                     {{ $t('dialogs.addSymbols.assetClass.crypto') }}
+                  </span>
+                  <span
+                    v-else-if="sec.assetClass === ASSET_CLASS.mutual_fund && assetClassFilter === 'all'"
+                    class="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] font-medium uppercase"
+                  >
+                    {{ $t('dialogs.addSymbols.assetClass.mutualFund') }}
                   </span>
                 </span>
 

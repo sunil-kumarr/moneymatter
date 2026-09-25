@@ -96,6 +96,9 @@
       },
       "closedPositions": "Closed positions ({count})",
       "stalePrice": "Last available price. Market value and gains may be outdated.",
+      "setNav": {
+        "ariaLabel": "Update NAV"
+      },
       "deleteHolding": {
         "ariaLabel": "Delete holding",
         "title": "Delete holding",

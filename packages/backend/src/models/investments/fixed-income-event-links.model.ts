@@ -1,0 +1,57 @@
+import { RecordId } from '@bt/shared/types';
+import { IdColumn } from '@common/types/id-column';
+import { Money } from '@common/types/money';
+import { MoneyField } from '@common/types/money-column';
+import { BelongsTo, Column, DataType, ForeignKey, Index, Model, Table } from 'sequelize-typescript';
+
+import Currencies from '../currencies.model';
+import Transactions from '../transactions.model';
+import FixedIncomeEvents from './fixed-income-events.model';
+
+@Table({
+  timestamps: true,
+  tableName: 'FixedIncomeEventLinks',
+})
+export default class FixedIncomeEventLinks extends Model {
+  @Column(IdColumn())
+  declare id: RecordId;
+
+  @ForeignKey(() => FixedIncomeEvents)
+  @Index
+  @Column({ type: DataType.UUID, allowNull: false })
+  fixedIncomeEventId!: RecordId;
+
+  @ForeignKey(() => Transactions)
+  @Index
+  @Column({ type: DataType.UUID, allowNull: false, unique: true })
+  transactionId!: RecordId;
+
+  @MoneyField({ storage: 'decimal', precision: 20, scale: 10 })
+  declare amount: Money;
+
+  @ForeignKey(() => Currencies)
+  @Index
+  @Column({ type: DataType.STRING(3), allowNull: false })
+  currencyCode!: string;
+
+  @Column({ type: DataType.DATE, allowNull: false, defaultValue: DataType.NOW })
+  linkedAt!: Date;
+
+  @Column({ type: DataType.JSONB, allowNull: true, defaultValue: null })
+  metaData!: Record<string, unknown> | null;
+
+  @Column({ type: DataType.DATE, allowNull: false })
+  declare createdAt: Date;
+
+  @Column({ type: DataType.DATE, allowNull: false })
+  declare updatedAt: Date;
+
+  @BelongsTo(() => FixedIncomeEvents)
+  event?: FixedIncomeEvents;
+
+  @BelongsTo(() => Transactions)
+  transaction?: Transactions;
+
+  @BelongsTo(() => Currencies, 'currencyCode')
+  currency?: Currencies;
+}

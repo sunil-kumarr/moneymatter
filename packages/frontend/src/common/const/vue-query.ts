@@ -24,13 +24,23 @@ export const VUE_QUERY_GLOBAL_PREFIXES = Object.freeze({
   // venture-aware queries) need to refresh.
   ventureChange: 'global-query-venture-change',
 
+  // When fixed-income positions/events change, combined-balance-history (and
+  // other fixed-income-aware queries) need to refresh.
+  fixedIncomeChange: 'global-query-fixed-income-change',
+
   currencies: 'currencies',
 
   notifications: 'notifications',
 });
 
-const { transactionChange, securityPriceChange, bankConnectionChange, ventureChange, notifications } =
-  VUE_QUERY_GLOBAL_PREFIXES;
+const {
+  transactionChange,
+  securityPriceChange,
+  bankConnectionChange,
+  ventureChange,
+  fixedIncomeChange,
+  notifications,
+} = VUE_QUERY_GLOBAL_PREFIXES;
 
 export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   // auth
@@ -45,19 +55,33 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   exchangeRatePair: [VUE_QUERY_GLOBAL_PREFIXES.currencies, 'rate-pair'] as const,
 
   // widget balance trend
-  widgetBalanceTrend: [transactionChange, securityPriceChange, ventureChange, 'widget-balance-trend'] as const,
-  widgetBalanceTrendPrev: [transactionChange, securityPriceChange, ventureChange, 'widget-balance-trend-prev'] as const,
+  widgetBalanceTrend: [
+    transactionChange,
+    securityPriceChange,
+    ventureChange,
+    fixedIncomeChange,
+    'widget-balance-trend',
+  ] as const,
+  widgetBalanceTrendPrev: [
+    transactionChange,
+    securityPriceChange,
+    ventureChange,
+    fixedIncomeChange,
+    'widget-balance-trend-prev',
+  ] as const,
   widgetBalanceTrendPlanned: [transactionChange, 'widget-balance-trend-planned'] as const,
   widgetBalanceTotalBalance: [
     transactionChange,
     securityPriceChange,
     ventureChange,
+    fixedIncomeChange,
     'widget-balance-total-balance',
   ] as const,
   widgetBalancePreviousBalance: [
     transactionChange,
     securityPriceChange,
     ventureChange,
+    fixedIncomeChange,
     'widget-balance-previous-balance',
   ] as const,
 
@@ -82,22 +106,30 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   widgetCashFlowTrend: [transactionChange, 'widget-cash-flow-trend'] as const,
 
   // widget net worth
-  widgetNetWorth: [transactionChange, securityPriceChange, ventureChange, 'widget-net-worth'] as const,
+  widgetNetWorth: [
+    transactionChange,
+    securityPriceChange,
+    ventureChange,
+    fixedIncomeChange,
+    'widget-net-worth',
+  ] as const,
 
   // analytics
   analyticsBalanceHistoryTrend: [
     transactionChange,
     securityPriceChange,
     ventureChange,
+    fixedIncomeChange,
     'analytics-balance-history-trend',
   ] as const,
   analyticsCashFlow: [transactionChange, 'analytics-cash-flow'] as const,
-  // End-of-bucket balance snapshots: security prices and venture valuations move
-  // the series without any transaction changing, so all three prefixes invalidate it.
+  // End-of-bucket balance snapshots: security prices and venture/fixed-income
+  // valuations move the series without any transaction changing.
   analyticsNetWorthHistory: [
     transactionChange,
     securityPriceChange,
     ventureChange,
+    fixedIncomeChange,
     'analytics-net-worth-history',
   ] as const,
   // Depends on security prices as well as transactions: a price move changes the
@@ -147,7 +179,7 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   portfoliosTrashList: [securityPriceChange, 'portfolios-trash'] as const,
   portfolioDetails: [securityPriceChange, 'portfolio-details'] as const,
   portfolioTransfers: [securityPriceChange, 'portfolio-transfers'] as const,
-  portfolioSummary: [securityPriceChange, 'portfolio-summary'] as const,
+  portfolioSummary: [securityPriceChange, fixedIncomeChange, 'portfolio-summary'] as const,
   portfolioAnnualizedReturns: [securityPriceChange, 'portfolio-annualized-returns'] as const,
   portfolioBalances: [securityPriceChange, 'portfolio-balances'] as const,
   transactionPortfolioLink: [transactionChange, 'transaction-portfolio-link'] as const,
@@ -265,4 +297,9 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   ventureDealDetails: [ventureChange, 'venture-deal-details'] as const,
   ventureDealMetrics: [ventureChange, 'venture-deal-metrics'] as const,
   ventureDealEvents: [ventureChange, 'venture-deal-events'] as const,
+
+  // fixed income
+  fixedIncomePositionsList: [fixedIncomeChange, 'fixed-income-positions-list'] as const,
+  fixedIncomePositionMetrics: [fixedIncomeChange, 'fixed-income-position-metrics'] as const,
+  fixedIncomePositionEvents: [fixedIncomeChange, 'fixed-income-position-events'] as const,
 });

@@ -7,6 +7,7 @@ import Portfolios from '@models/investments/portfolios.model';
 import * as UsersCurrencies from '@models/users-currencies.model';
 import { calculateRefAmountFromParams } from '@services/calculate-ref-amount.service';
 import { withTransaction } from '@services/common/with-transaction';
+import { getFixedIncomePositionValues } from '@services/investments/fixed-income/metrics/get-fixed-income-position-values.service';
 import { getHoldingValues } from '@services/investments/holdings/get-holding-values.service';
 import * as userExchangeRateService from '@services/user-exchange-rate';
 
@@ -28,10 +29,11 @@ interface PortfolioSummaryResult {
   currencyCode: string; // Portfolio's displayCurrencyCode, or user's base currency when unset
   totalCashInBaseCurrency: string;
   availableCashInBaseCurrency: string;
-  totalPortfolioValue: string; // Holdings value + cash
+  totalPortfolioValue: string; // Holdings value + fixed income value + cash
   baseCurrencyCode: string; // User's base currency, regardless of display currency
-  // Holdings value + cash in the user's base currency; equals totalPortfolioValue when no display currency is set
+  // Holdings value + fixed income value + cash in the user's base currency; equals totalPortfolioValue when no display currency is set
   totalPortfolioValueInBaseCurrency: string;
+  totalFixedIncomeValueInBaseCurrency: string;
 }
 
 /**
@@ -131,35 +133,10 @@ const getPortfolioSummaryImpl = async ({
 
   // Get all holdings with their gain/loss calculations
   const holdings = await getHoldingValues({ portfolioId, date, userId });
+  const fixedIncomePositions = await getFixedIncomePositionValues({ portfolioId, userId, asOfDate: conversionDate });
 
-  if (holdings.length === 0) {
-    // Return zero values for holdings but include cash
-    return {
-      portfolioId,
-      portfolioName: portfolio.name,
-      totalCurrentValue: '0.00',
-      totalCostBasis: '0.00',
-      unrealizedGainValue: '0.00',
-      unrealizedGainPercent: '0.00',
-      realizedGainValue: '0.00',
-      realizedGainPercent: '0.00',
-      currencyCode: display.code,
-      totalCashInBaseCurrency: toDisplay(totalCashInBase),
-      availableCashInBaseCurrency: toDisplay(availableCashInBase),
-      totalPortfolioValue: toDisplay(totalCashInBase),
-      baseCurrencyCode,
-      totalPortfolioValueInBaseCurrency: totalCashInBase.toNumber().toFixed(2),
-    };
-  }
-
-  // Aggregate everything in the user's base currency at `conversionDate`
-  let totalCurrentValueInBase = Money.zero();
-  let totalCostBasisInBase = Money.zero();
-  let totalUnrealizedGainInBase = Money.zero();
-  let totalRealizedGainInBase = Money.zero();
-
-  // One rate lookup per distinct holding currency: every lookup queries the user's
-  // currency connection before any cache, so a per-holding call is an N+1.
+  // One rate lookup per distinct currency: every lookup queries the user's
+  // currency connection before any cache, so a per-item call is an N+1.
   const baseRates = new Map<string, number>();
   const toBase = async ({ amount, currencyCode }: { amount: Money; currencyCode: string }): Promise<Money> => {
     let rate = baseRates.get(currencyCode);
@@ -174,6 +151,41 @@ const getPortfolioSummaryImpl = async ({
     }
     return calculateRefAmountFromParams({ amount, rate });
   };
+
+  let totalFixedIncomeValueInBase = Money.zero();
+  for (const position of fixedIncomePositions) {
+    totalFixedIncomeValueInBase = totalFixedIncomeValueInBase.add(
+      await toBase({ amount: Money.fromDecimal(position.currentValue), currencyCode: position.currencyCode }),
+    );
+  }
+
+  if (holdings.length === 0) {
+    // Return zero values for holdings but include cash + fixed income
+    const totalValueInBase = totalCashInBase.add(totalFixedIncomeValueInBase);
+    return {
+      portfolioId,
+      portfolioName: portfolio.name,
+      totalCurrentValue: '0.00',
+      totalCostBasis: '0.00',
+      unrealizedGainValue: '0.00',
+      unrealizedGainPercent: '0.00',
+      realizedGainValue: '0.00',
+      realizedGainPercent: '0.00',
+      currencyCode: display.code,
+      totalCashInBaseCurrency: toDisplay(totalCashInBase),
+      availableCashInBaseCurrency: toDisplay(availableCashInBase),
+      totalPortfolioValue: toDisplay(totalValueInBase),
+      baseCurrencyCode,
+      totalPortfolioValueInBaseCurrency: totalValueInBase.toNumber().toFixed(2),
+      totalFixedIncomeValueInBaseCurrency: totalFixedIncomeValueInBase.toNumber().toFixed(2),
+    };
+  }
+
+  // Aggregate everything in the user's base currency at `conversionDate`
+  let totalCurrentValueInBase = Money.zero();
+  let totalCostBasisInBase = Money.zero();
+  let totalUnrealizedGainInBase = Money.zero();
+  let totalRealizedGainInBase = Money.zero();
 
   for (const holding of holdings) {
     const marketValueInBase = Money.fromDecimal(holding.refMarketValue || '0');
@@ -204,6 +216,8 @@ const getPortfolioSummaryImpl = async ({
 
   const realizedGainPercent = costBasisNum !== 0 ? (totalRealizedGainInBase.toNumber() / costBasisNum) * 100 : 0;
 
+  const totalValueInBase = totalCurrentValueInBase.add(totalCashInBase).add(totalFixedIncomeValueInBase);
+
   return {
     portfolioId,
     portfolioName: portfolio.name,
@@ -216,9 +230,10 @@ const getPortfolioSummaryImpl = async ({
     currencyCode: display.code,
     totalCashInBaseCurrency: toDisplay(totalCashInBase),
     availableCashInBaseCurrency: toDisplay(availableCashInBase),
-    totalPortfolioValue: toDisplay(totalCurrentValueInBase.add(totalCashInBase)),
+    totalPortfolioValue: toDisplay(totalValueInBase),
     baseCurrencyCode,
-    totalPortfolioValueInBaseCurrency: totalCurrentValueInBase.add(totalCashInBase).toNumber().toFixed(2),
+    totalPortfolioValueInBaseCurrency: totalValueInBase.toNumber().toFixed(2),
+    totalFixedIncomeValueInBaseCurrency: totalFixedIncomeValueInBase.toNumber().toFixed(2),
   };
 };
 

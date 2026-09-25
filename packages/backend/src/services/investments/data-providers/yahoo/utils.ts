@@ -39,9 +39,9 @@ export function isExpectedNotFoundError(reason: unknown): boolean {
  * Yahoo tags UCITS ETFs as `MUTUALFUND` even though they trade intraday with a
  * ticker. For ISIN-shaped queries the result set is exchange-traded-only by
  * construction, so the remap to `etf` is safe and routes them through the
- * stocks classifier instead of the fixed-income classifier where real mutuals
- * belong. Non-ISIN queries keep the original type so the service-layer filter
- * still drops genuine mutuals.
+ * stocks classifier instead of the mutual-fund classifier where real mutuals
+ * belong. Non-ISIN queries keep the original type so genuine mutuals still
+ * classify as `ASSET_CLASS.mutual_fund`.
  */
 export function remapUcitsType({
   rawType,
@@ -62,7 +62,8 @@ export function mapYahooTypeToAssetClass(typeDisp?: string): ASSET_CLASS {
 
   if (type === 'cryptocurrency') return ASSET_CLASS.crypto;
   if (type === 'option') return ASSET_CLASS.options;
-  if (type === 'bond' || type === 'mutualfund') return ASSET_CLASS.fixed_income;
+  if (type === 'bond') return ASSET_CLASS.fixed_income;
+  if (type === 'mutualfund') return ASSET_CLASS.mutual_fund;
 
   return ASSET_CLASS.stocks;
 }

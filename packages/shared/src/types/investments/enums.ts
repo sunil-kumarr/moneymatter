@@ -13,6 +13,7 @@ export enum ASSET_CLASS {
   cash = 'cash',
   crypto = 'crypto',
   fixed_income = 'fixed_income',
+  mutual_fund = 'mutual_fund',
   options = 'options',
   stocks = 'stocks',
   other = 'other',
@@ -21,10 +22,16 @@ export enum ASSET_CLASS {
 /**
  * Asset classes the product currently supports for user-facing search and
  * holding creation. Anything else is filtered from search results and rejected
- * by the createHolding endpoint. Bonds/mutual funds (fixed income), options,
- * cash, and "other" require dedicated UX/data flows that don't exist yet.
+ * by the createHolding endpoint. Bonds (fixed income), options, cash, and
+ * "other" require dedicated UX/data flows that don't exist yet. Mutual funds
+ * are supported but priced manually (see securities-price/create-manual-price)
+ * rather than through the auto-sync pipeline.
  */
-export const SUPPORTED_ASSET_CLASSES: readonly ASSET_CLASS[] = [ASSET_CLASS.stocks, ASSET_CLASS.crypto] as const;
+export const SUPPORTED_ASSET_CLASSES: readonly ASSET_CLASS[] = [
+  ASSET_CLASS.stocks,
+  ASSET_CLASS.crypto,
+  ASSET_CLASS.mutual_fund,
+] as const;
 
 export enum INVESTMENT_TRANSACTION_CATEGORY {
   buy = 'buy',

@@ -2,6 +2,7 @@
 import PrecisionNumber from '@/components/common/precision-number.vue';
 import ResponsiveAlertDialog from '@/components/common/responsive-alert-dialog.vue';
 import ResponsiveDialog from '@/components/common/responsive-dialog.vue';
+import ManualNavEntryDialog from '@/components/dialogs/manual-nav-entry-dialog.vue';
 import InvestmentTransactionForm from '@/components/forms/investment-transaction-form.vue';
 import { Button } from '@/components/lib/ui/button';
 import { ScrollArea } from '@/components/lib/ui/scroll-area';
@@ -24,6 +25,7 @@ import {
   ChevronRightIcon,
   ClockAlertIcon,
   PackageOpenIcon,
+  PencilIcon,
   PlusIcon,
   SearchXIcon,
   Trash2Icon,
@@ -175,6 +177,15 @@ const formatMoneyCell = ({
     : formatCurrency(native, holding.currencyCode);
 
 const { isExpanded, toggleExpand, collapseIfMatches } = useHoldingRowExpansion();
+
+// Manual NAV entry flow (mutual funds only – no auto-sync price provider)
+const manualNavDialogOpen = ref(false);
+const holdingPendingNavEntry = ref<HoldingModel | null>(null);
+
+const openManualNavEntry = (holding: HoldingModel) => {
+  holdingPendingNavEntry.value = holding;
+  manualNavDialogOpen.value = true;
+};
 
 // Delete holding flow
 const deleteHoldingMutation = useDeleteHolding();
@@ -456,6 +467,20 @@ const theadLabelStyles = 'block max-w-32 truncate';
                         {{ formatDate(row.holding.priceDate!, 'd MMM') }}
                       </div>
                     </DesktopOnlyTooltip>
+                    <DesktopOnlyTooltip
+                      v-if="row.holding.security?.assetClass === ASSET_CLASS.mutual_fund"
+                      :content="$t('portfolioDetail.holdingsTable.setNav.ariaLabel')"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        class="size-6"
+                        :aria-label="$t('portfolioDetail.holdingsTable.setNav.ariaLabel')"
+                        @click="openManualNavEntry(row.holding)"
+                      >
+                        <PencilIcon class="size-3" />
+                      </Button>
+                    </DesktopOnlyTooltip>
                   </td>
                   <td :class="[cellStyles, 'text-muted-foreground px-3 text-right tabular-nums']">
                     {{ formatCurrency(getAverageCost(row.holding), row.holding.currencyCode) }}
@@ -564,6 +589,14 @@ const theadLabelStyles = 'block max-w-32 truncate';
         @cancel="isTransactionModalOpen = false"
       />
     </ResponsiveDialog>
+
+    <ManualNavEntryDialog
+      v-if="holdingPendingNavEntry?.security"
+      v-model:open="manualNavDialogOpen"
+      :security-id="holdingPendingNavEntry.securityId"
+      :symbol="holdingPendingNavEntry.security.symbol ?? ''"
+      :currency-code="holdingPendingNavEntry.currencyCode"
+    />
 
     <ResponsiveAlertDialog
       v-model:open="deleteConfirmOpen"

@@ -60,7 +60,13 @@ export const createHoldingController = createController(
         });
       }
 
-      const { security } = await addSecurityFromSearch({ searchResult });
+      // Mutual funds have no auto-sync price provider yet (manual NAV entry
+      // only), so skip the immediate best-effort price fetch that would
+      // otherwise fail every time for this asset class.
+      const { security } = await addSecurityFromSearch({
+        searchResult,
+        skipPriceFetch: searchResult.assetClass === ASSET_CLASS.mutual_fund,
+      });
       finalSecurityId = security.id;
     }
 

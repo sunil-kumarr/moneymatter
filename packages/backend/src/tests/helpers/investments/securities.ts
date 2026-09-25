@@ -2,6 +2,7 @@ import { until } from '@common/helpers';
 import { jest } from '@jest/globals';
 import type Securities from '@models/investments/securities.model';
 import { FmpClient, type FmpSearchResult } from '@root/services/investments/data-providers/clients/fmp-client';
+import { createManualPrice as _createManualPrice } from '@root/services/investments/securities-price/create-manual-price.service';
 import { addSecurityFromSearch } from '@root/services/investments/securities/add-from-search.service';
 import * as getSecuritiesService from '@root/services/investments/securities/get-all';
 import { searchSecurities as _searchSecurities } from '@root/services/investments/securities/search.service';
@@ -100,6 +101,23 @@ export async function seedSecurities(securitiesToSeed: SeedSecurityPayload[]) {
   );
 
   return createdSecurities;
+}
+
+export async function createManualPrice<R extends boolean | undefined = false>({
+  securityId,
+  payload,
+  raw,
+}: {
+  securityId: string;
+  payload: Omit<Parameters<typeof _createManualPrice>[0], 'userId' | 'securityId'>;
+  raw?: R;
+}) {
+  return makeRequest<Awaited<ReturnType<typeof _createManualPrice>>, R>({
+    method: 'post',
+    url: `/investments/securities/${securityId}/manual-price`,
+    payload,
+    raw,
+  });
 }
 
 export async function searchSecurities<R extends boolean | undefined = false>({
