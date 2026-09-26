@@ -191,6 +191,7 @@ const calculateInvestmentSlice = async ({
   }
 
   const portfolioIds = portfolios.map((portfolio) => portfolio.id);
+  const costBasisMethodByPortfolioId = new Map(portfolios.map((p) => [p.id, p.costBasisMethod]));
 
   // Cash rows must reach through end-of-TODAY even when the window ends earlier:
   // `computePortfolioCashByDate` anchors on stored cash and back-subtracts every
@@ -383,6 +384,7 @@ const calculateInvestmentSlice = async ({
         unpricedSecurityIds.add(securityId);
         unpricedDates.add(dateStr);
       },
+      costBasisMethodByPortfolioId,
     }),
   }));
 

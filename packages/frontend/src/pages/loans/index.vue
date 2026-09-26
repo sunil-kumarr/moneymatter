@@ -40,6 +40,7 @@
 
     <template v-else-if="loans.length">
       <AggregateCard v-if="trackedLoans.length" class="mb-6" :loans="trackedLoans" />
+      <LoansValueHistory v-if="trackedLoans.length" :loans="trackedLoans" />
       <LoanList v-if="activeLoans.length" :loans="activeLoans" />
 
       <section v-if="paidOffLoans.length" class="mt-8">
@@ -105,6 +106,7 @@ import { ChevronDownIcon, HandCoinsIcon, PlusIcon } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 import AggregateCard from './components/aggregate-card.vue';
+import LoansValueHistory from './components/loans-value-history.vue';
 import ArchivedLoanList from './components/archived-loan-list.vue';
 import CreateLoanDialog from './components/create-loan-dialog.vue';
 import LoanList from './components/loan-list.vue';

@@ -7,7 +7,10 @@
 import { endpointsTypes, type RecordId } from '@bt/shared/types';
 import { centsToApiDecimal } from '@common/types/money';
 import type Balances from '@models/balances.model';
-import type { CombinedBalanceHistoryItem } from '@services/stats/get-combined-balance-history';
+import type {
+  CombinedBalanceHistoryItem,
+  PortfolioValueHistoryItem,
+} from '@services/stats/get-combined-balance-history';
 import type { InvestmentContributionsResultCents } from '@services/stats/get-investment-contributions';
 import type { NetWorthDriversResultCents } from '@services/stats/get-net-worth-drivers';
 import type { NetWorthHistoryResultCents } from '@services/stats/get-net-worth-history';
@@ -275,6 +278,29 @@ export function serializeCumulativeData(cumulative: endpointsTypes.GetCumulative
     previousPeriod: serializeCumulativePeriod(cumulative.previousPeriod),
     percentChange: cumulative.percentChange,
   };
+}
+
+// ============================================================================
+// Portfolio Value History Serializer
+// ============================================================================
+
+interface PortfolioValueHistoryItemApiResponse {
+  date: string;
+  currentValue: number;
+  investedValue: number;
+}
+
+/**
+ * Serialize portfolio value history (from getPortfolioValueHistory)
+ */
+export function serializePortfolioValueHistory(
+  items: PortfolioValueHistoryItem[],
+): PortfolioValueHistoryItemApiResponse[] {
+  return items.map((item) => ({
+    date: item.date,
+    currentValue: centsToApiDecimal(item.currentValue),
+    investedValue: centsToApiDecimal(item.investedValue),
+  }));
 }
 
 // ============================================================================

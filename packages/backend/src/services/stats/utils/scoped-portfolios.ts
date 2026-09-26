@@ -1,4 +1,5 @@
 import { type RecordId } from '@bt/shared/types';
+import { COST_BASIS_METHOD } from '@bt/shared/types/investments';
 import Portfolios from '@models/investments/portfolios.model';
 import { Op } from 'sequelize';
 
@@ -19,13 +20,13 @@ export const getScopedEnabledPortfolios = async ({
 }: {
   userId: number;
   portfolioIds?: RecordId[];
-}): Promise<{ id: RecordId; name: string }[]> =>
+}): Promise<{ id: RecordId; name: string; costBasisMethod: COST_BASIS_METHOD }[]> =>
   (await Portfolios.findAll({
     where: {
       userId,
       isEnabled: true,
       ...(portfolioIds && portfolioIds.length > 0 ? { id: { [Op.in]: portfolioIds } } : {}),
     },
-    attributes: ['id', 'name'],
+    attributes: ['id', 'name', 'costBasisMethod'],
     raw: true,
-  })) as { id: RecordId; name: string }[];
+  })) as { id: RecordId; name: string; costBasisMethod: COST_BASIS_METHOD }[];

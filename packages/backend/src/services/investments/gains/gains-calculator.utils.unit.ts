@@ -91,6 +91,8 @@ describe('Gains Calculator Utils', () => {
       // Percentage: ($485 / $1,005) * 100 = ~48.26%
       expect(result.realizedGainValue).toBeCloseTo(485, 2);
       expect(result.realizedGainPercent).toBeCloseTo(48.26, 2);
+      expect(result.totalCostBasisOfSoldShares).toBeCloseTo(1005, 2);
+      expect(result.totalProceedsFromSoldShares).toBeCloseTo(1490, 2);
     });
 
     it('should calculate simple buy-sell scenario with loss', () => {
@@ -119,6 +121,8 @@ describe('Gains Calculator Utils', () => {
       // Percentage: (-$515 / $2,005) * 100 = ~-25.69%
       expect(result.realizedGainValue).toBeCloseTo(-515, 2);
       expect(result.realizedGainPercent).toBeCloseTo(-25.69, 2);
+      expect(result.totalCostBasisOfSoldShares).toBeCloseTo(2005, 2);
+      expect(result.totalProceedsFromSoldShares).toBeCloseTo(1490, 2);
     });
 
     it('should handle FIFO (First In, First Out) correctly', () => {

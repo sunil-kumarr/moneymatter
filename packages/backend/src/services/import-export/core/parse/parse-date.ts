@@ -46,12 +46,38 @@ export function parseDate(dateStr: string): string | null {
     }
   }
 
+  // "DD Mon YYYY" (e.g. "20 May 2026") — the date format Indian mutual fund
+  // order-history exports (Groww, CAMS/KFintech statements) use.
+  const dayMonthNameYearMatch = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+  if (dayMonthNameYearMatch) {
+    const [, day, monthName, year] = dayMonthNameYearMatch;
+    const month = MONTH_NAME_TO_NUMBER[monthName!.toLowerCase().slice(0, 3)];
+    if (month && isValidDate(Number(year), month, Number(day))) {
+      return `${year}-${String(month).padStart(2, '0')}-${day!.padStart(2, '0')}`;
+    }
+  }
+
   // No `new Date()` fallback. Its silent roll-over behaviour ("2024-01-32" →
   // Feb 1) is worse than returning null — a missed row is visible in the
   // invalid-rows warning, a wrong date is invisible. Brokers emit one of the
   // formats above; anything else should fail loudly.
   return null;
 }
+
+const MONTH_NAME_TO_NUMBER: Record<string, number> = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+};
 
 function isValidDate(year: number, month: number, day: number): boolean {
   const currentYear = new Date().getFullYear();

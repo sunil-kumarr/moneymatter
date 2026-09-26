@@ -88,6 +88,34 @@
       "principalRepaid": "{percent}% of {amount} principal repaid",
       "debtFree": "Debt-free"
     },
+    "valueHistory": {
+      "principal": "Principal",
+      "interest": "Interest",
+      "totalCost": "Total Cost",
+      "today": "Today",
+      "allLoans": "All Loans",
+      "loanSelectorLabel": "Select loan",
+      "remainingBalance": "Remaining Principal",
+      "cumulativeInterest": "Cumulative Interest",
+      "cumulativePrincipal": "Principal Repaid",
+      "monthlyPrincipal": "Monthly Principal",
+      "monthlyInterest": "Monthly Interest",
+      "monthlyPayment": "Monthly Payment",
+      "debtFree": "Payoff {date}",
+      "modes": {
+        "balance": "Balance & Interest",
+        "payment": "Monthly Split"
+      },
+      "periods": {
+        "1Y": "1Y",
+        "3Y": "3Y",
+        "5Y": "5Y",
+        "ALL": "All"
+      },
+      "states": {
+        "noData": "Not enough data to chart loan amortization"
+      }
+    },
     "list": {
       "columns": {
         "loan": "Loan",

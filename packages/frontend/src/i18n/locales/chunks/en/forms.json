@@ -66,6 +66,12 @@
       "displayCurrencyPlaceholder": "Select display currency",
       "displayCurrencyBaseOption": "Base currency ({code})",
       "displayCurrencyDescription": "Portfolio value and stats are converted to this currency at the current exchange rate.",
+      "costBasisMethodLabel": "Cost basis method",
+      "costBasisMethodHint": "Only affects mutual fund holdings. Weighted average reduces cost proportionally on each sell; FIFO (used by Indian platforms like Groww/CAMS) sells the oldest purchase lots first.",
+      "costBasisMethods": {
+        "weightedAverage": "Weighted average",
+        "fifo": "FIFO"
+      },
       "cancelButton": "Cancel",
       "submitButton": "Save Changes",
       "submitButtonLoading": "Saving...",

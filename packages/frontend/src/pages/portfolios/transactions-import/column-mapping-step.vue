@@ -14,6 +14,7 @@ import {
   INVESTMENT_IMPORT_SIDE_SKIP,
   INVESTMENT_TRANSACTION_CATEGORY,
   type InvestmentColumnMapping,
+  type InvestmentImportAssetClassHint,
   type InvestmentImportExtractionResult,
   type InvestmentImportHolding,
   type InvestmentImportSideSkip,
@@ -129,7 +130,9 @@ const currencyColumn = ref<string | null>(initialColumn('currency'));
 const nameColumn = ref<string | null>(initialColumn('name'));
 
 const defaultCurrency = ref<string>(props.initialMapping?.defaultCurrency ?? 'USD');
-const defaultAssetClassHint = ref<'crypto' | 'stocks'>(props.initialMapping?.defaultAssetClassHint ?? 'stocks');
+const defaultAssetClassHint = ref<InvestmentImportAssetClassHint>(
+  props.initialMapping?.defaultAssetClassHint ?? 'stocks',
+);
 
 const { currencies: prioritizedCurrencies } = usePrioritizedCurrencies();
 
@@ -203,9 +206,10 @@ const categoryOptions = computed<CategoryOption[]>(() => [
   { label: t('investmentsImport.categories.skip'), value: INVESTMENT_IMPORT_SIDE_SKIP },
 ]);
 
-const assetClassOptions = computed<{ label: string; value: 'crypto' | 'stocks' }[]>(() => [
+const assetClassOptions = computed<{ label: string; value: InvestmentImportAssetClassHint }[]>(() => [
   { label: t('investmentsImport.assetClasses.stocks'), value: 'stocks' },
   { label: t('investmentsImport.assetClasses.crypto'), value: 'crypto' },
+  { label: t('investmentsImport.assetClasses.mutualFund'), value: 'mutual_fund' },
 ]);
 
 const requiredFilled = computed(

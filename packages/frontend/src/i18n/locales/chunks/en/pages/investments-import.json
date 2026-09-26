@@ -124,7 +124,8 @@
     },
     "assetClasses": {
       "stocks": "Stocks",
-      "crypto": "Crypto"
+      "crypto": "Crypto",
+      "mutualFund": "Mutual Fund"
     }
   }
 }

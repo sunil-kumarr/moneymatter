@@ -10,6 +10,7 @@ import { getPortfolio as _getPortfolio } from '@services/investments/portfolios/
 import { listPortfolios as _listPortfolios } from '@services/investments/portfolios/list.service';
 import { restorePortfolio as _restorePortfolio } from '@services/investments/portfolios/restore.service';
 import { updatePortfolio as _updatePortfolio } from '@services/investments/portfolios/update.service';
+import { getPortfolioValueHistory as _getPortfolioValueHistory } from '@services/stats/get-combined-balance-history';
 
 import { makeRequest } from '../common';
 
@@ -210,6 +211,23 @@ export async function getPortfoliosAnnualizedReturns<R extends boolean | undefin
   return makeRequest<Awaited<ReturnType<typeof _getPortfoliosAnnualizedReturns>>, R>({
     method: 'get',
     url: '/investments/portfolios/annualized-returns',
+    raw,
+  });
+}
+
+export async function getPortfoliosValueHistory<R extends boolean | undefined = false>({
+  from,
+  to,
+  raw,
+}: {
+  from?: string;
+  to?: string;
+  raw?: R;
+} = {}) {
+  return makeRequest<Awaited<ReturnType<typeof _getPortfolioValueHistory>>, R>({
+    method: 'get',
+    url: '/investments/portfolios/value-history',
+    payload: removeUndefinedKeys({ from, to }),
     raw,
   });
 }

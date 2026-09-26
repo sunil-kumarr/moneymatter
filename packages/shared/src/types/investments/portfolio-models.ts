@@ -1,5 +1,5 @@
 import { AccountModel, CurrencyModel, UserModel } from '../db-models';
-import { PORTFOLIO_TYPE } from './enums';
+import { COST_BASIS_METHOD, PORTFOLIO_TYPE } from './enums';
 import { HoldingModel } from './holding.model';
 import { InvestmentTransactionModel } from './investment-transaction.model';
 
@@ -34,6 +34,8 @@ export interface PortfolioModel {
   /** Currency for displaying portfolio summary/stats. Null = user's base currency. */
   displayCurrencyCode: string | null;
   isEnabled: boolean;
+  /** Cost-basis algorithm for this portfolio's mutual_fund holdings. See `COST_BASIS_METHOD`. */
+  costBasisMethod: COST_BASIS_METHOD;
   createdAt: Date;
   updatedAt: Date;
   /** Non-null when the portfolio is in trash awaiting purge. */

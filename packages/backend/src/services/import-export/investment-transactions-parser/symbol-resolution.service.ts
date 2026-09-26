@@ -5,7 +5,11 @@
  * to be testable in isolation from the rest of the import pipeline.
  */
 import { ASSET_CLASS, SECURITY_PROVIDER, type SecuritySearchResult } from '@bt/shared/types/investments';
-import type { ResolvedSecurityRef, SymbolResolutionConfidence } from '@bt/shared/types/investments';
+import type {
+  InvestmentImportAssetClassHint,
+  ResolvedSecurityRef,
+  SymbolResolutionConfidence,
+} from '@bt/shared/types/investments';
 import Holdings from '@models/investments/holdings.model';
 import Portfolios from '@models/investments/portfolios.model';
 import Securities from '@models/investments/securities.model';
@@ -72,7 +76,9 @@ export function normaliseCurrency({ raw }: { raw: string | null | undefined }): 
 
 interface SymbolWithHint {
   symbol: string;
-  assetClassHint: 'crypto' | 'stocks';
+  assetClassHint: InvestmentImportAssetClassHint;
+  /** As-written display name, used only by the mutual_fund branch (no provider to source one from). */
+  name?: string | null;
 }
 
 interface ResolveSymbolsParams {
@@ -99,8 +105,33 @@ interface SymbolResolutionResult {
   warnings: string[];
 }
 
-const hintToAssetClass = ({ hint }: { hint: 'crypto' | 'stocks' }): ASSET_CLASS =>
-  hint === 'crypto' ? ASSET_CLASS.crypto : ASSET_CLASS.stocks;
+const hintToAssetClass = ({ hint }: { hint: InvestmentImportAssetClassHint }): ASSET_CLASS => {
+  if (hint === 'crypto') return ASSET_CLASS.crypto;
+  if (hint === 'mutual_fund') return ASSET_CLASS.mutual_fund;
+  return ASSET_CLASS.stocks;
+};
+
+/**
+ * Build a resolved ref for a mutual fund row straight from its scheme name —
+ * no provider covers Indian mutual fund schemes by name, so unlike
+ * stocks/crypto we never attempt a provider search. `alreadyInDb: false`
+ * tells the executor to create the Security row on commit; `providerName:
+ * composite` is a placeholder label (no network call happens for this path —
+ * see `addOrUpdateFromProvider`), matching how mutual funds are otherwise
+ * documented as priced/managed manually.
+ */
+function buildManualMutualFundRef({ symbol, name }: { symbol: string; name: string | null }): ResolvedSecurityRef {
+  return {
+    securityId: null,
+    providerSymbol: symbol,
+    symbol,
+    name: name ?? symbol,
+    assetClass: ASSET_CLASS.mutual_fund,
+    providerName: SECURITY_PROVIDER.composite,
+    currencyCode: 'INR',
+    alreadyInDb: false,
+  };
+}
 
 function buildResolvedRef({ security }: { security: Securities }): ResolvedSecurityRef {
   return {
@@ -157,10 +188,14 @@ export async function resolveSymbols({
 
   // Dedupe by ticker — if the AI tagged the same ticker with conflicting
   // hints across rows (rare), prefer the first hint we saw.
-  const hintBySymbol = new Map<string, 'crypto' | 'stocks'>();
-  for (const { symbol, assetClassHint } of symbolsWithHints) {
+  const hintBySymbol = new Map<string, InvestmentImportAssetClassHint>();
+  const nameBySymbol = new Map<string, string | null>();
+  for (const { symbol, assetClassHint, name } of symbolsWithHints) {
     const upper = symbol.toUpperCase();
-    if (!hintBySymbol.has(upper)) hintBySymbol.set(upper, assetClassHint);
+    if (!hintBySymbol.has(upper)) {
+      hintBySymbol.set(upper, assetClassHint);
+      nameBySymbol.set(upper, name ?? null);
+    }
   }
   const uniqUpper = Array.from(hintBySymbol.keys());
 
@@ -215,7 +250,9 @@ export async function resolveSymbols({
 
   // Step 2: provider search for the symbols that didn't resolve from the user's
   // own securities. Route each ticker to the provider matching its asset class.
-  const unresolvedTickers = uniqUpper.filter((t) => !userByTicker.has(t));
+  // Mutual funds are excluded — no provider indexes Indian scheme names by
+  // ticker, so those are resolved straight to a manual "create new" ref below.
+  const unresolvedTickers = uniqUpper.filter((t) => !userByTicker.has(t) && hintBySymbol.get(t) !== 'mutual_fund');
   const providerHits = new Map<string, SecuritySearchResult[]>();
   if (unresolvedTickers.length > 0) {
     const provider = dataProviderFactory.getProvider();
@@ -249,6 +286,16 @@ export async function resolveSymbols({
         resolvedSecurity: buildResolvedRef({ security: fromUser.security }),
         resolvedConfidence: 'auto',
         hasExistingHolding: fromUser.hasExistingHolding,
+      });
+      continue;
+    }
+
+    if (hintBySymbol.get(ticker) === 'mutual_fund') {
+      out.set(ticker, {
+        parsedSymbol: ticker,
+        resolvedSecurity: buildManualMutualFundRef({ symbol: ticker, name: nameBySymbol.get(ticker) ?? null }),
+        resolvedConfidence: 'auto',
+        hasExistingHolding: false,
       });
       continue;
     }

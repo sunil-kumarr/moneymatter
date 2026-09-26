@@ -64,4 +64,20 @@ describe('parseDate', () => {
     expect(parseDate('')).toBeNull();
     expect(parseDate('not-a-date')).toBeNull();
   });
+
+  it('parses "DD Mon YYYY" (Indian mutual fund statement exports)', () => {
+    expect(parseDate('20 May 2026')).toBe('2026-05-20');
+    expect(parseDate('10 Mar 2022')).toBe('2022-03-10');
+    expect(parseDate('1 Jan 2024')).toBe('2024-01-01');
+  });
+
+  it('is case-insensitive and tolerant of a full month name for "DD Mon YYYY"', () => {
+    expect(parseDate('20 MAY 2026')).toBe('2026-05-20');
+    expect(parseDate('20 May 2026'.toLowerCase())).toBe('2026-05-20');
+    expect(parseDate('20 September 2026')).toBe('2026-09-20');
+  });
+
+  it('rejects an unrecognised month name for "DD Mon YYYY"', () => {
+    expect(parseDate('20 Foo 2026')).toBeNull();
+  });
 });

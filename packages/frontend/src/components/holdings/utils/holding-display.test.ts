@@ -1,6 +1,12 @@
 import type { HoldingModel } from '@bt/shared/types/investments';
 
-import { groupHoldings, isClosedPosition, isPriceStale, sortHoldings } from './holding-display';
+import {
+  calculateClosedPositionsSummary,
+  groupHoldings,
+  isClosedPosition,
+  isPriceStale,
+  sortHoldings,
+} from './holding-display';
 
 const makeHolding = (overrides: Partial<HoldingModel> & { symbol?: string }): HoldingModel => {
   const { symbol, ...rest } = overrides;
@@ -21,6 +27,20 @@ describe('isClosedPosition', () => {
   it('treats zero quantity with a realized gain as closed (fully sold out)', () => {
     expect(isClosedPosition(makeHolding({ quantity: '0', costBasis: '0', realizedGainValue: '500' }))).toBe(true);
     expect(isClosedPosition(makeHolding({ quantity: '0', costBasis: '0', realizedGainValue: '-120' }))).toBe(true);
+  });
+
+  it('treats zero quantity with totalInvested/totalRedeemed as closed even with zero gain', () => {
+    expect(
+      isClosedPosition(
+        makeHolding({
+          quantity: '0',
+          costBasis: '0',
+          realizedGainValue: '0',
+          totalInvested: '100',
+          totalRedeemed: '100',
+        }),
+      ),
+    ).toBe(true);
   });
 
   it('treats zero quantity with a remaining cost basis as closed', () => {
@@ -180,5 +200,100 @@ describe('groupHoldings', () => {
 
     expect(justAdded.map((h) => h.security?.symbol)).toEqual(['NEW']);
     expect(active.map((h) => h.security?.symbol)).toEqual(['SONY']);
+  });
+});
+
+describe('calculateClosedPositionsSummary', () => {
+  it('correctly sums totalInvested, totalRedeemed, and realizedGain across closed positions', () => {
+    const closed = [
+      makeHolding({
+        symbol: 'AAPL',
+        quantity: '0',
+        totalInvested: '1000',
+        totalRedeemed: '1200',
+        realizedGainValue: '200',
+        realizedGainPercent: '20',
+      }),
+      makeHolding({
+        symbol: 'GOOGL',
+        quantity: '0',
+        totalInvested: '2000',
+        totalRedeemed: '1800',
+        realizedGainValue: '-200',
+        realizedGainPercent: '-10',
+      }),
+    ];
+
+    const summary = calculateClosedPositionsSummary(closed);
+
+    expect(summary.count).toBe(2);
+    expect(summary.totalInvested).toBe(3000);
+    expect(summary.totalRedeemed).toBe(3000);
+    expect(summary.realizedGain).toBe(0);
+    expect(summary.realizedGainPercent).toBe(0);
+  });
+
+  it('calculates positive gain percent correctly', () => {
+    const closed = [
+      makeHolding({
+        symbol: 'NVDA',
+        quantity: '0',
+        totalInvested: '500',
+        totalRedeemed: '750',
+        realizedGainValue: '250',
+        realizedGainPercent: '50',
+      }),
+    ];
+
+    const summary = calculateClosedPositionsSummary(closed);
+
+    expect(summary.count).toBe(1);
+    expect(summary.totalInvested).toBe(500);
+    expect(summary.totalRedeemed).toBe(750);
+    expect(summary.realizedGain).toBe(250);
+    expect(summary.realizedGainPercent).toBe(50);
+  });
+
+  it('uses display currency fields when available', () => {
+    const closed = [
+      makeHolding({
+        symbol: 'AAPL',
+        quantity: '0',
+        currencyCode: 'USD',
+        displayCurrencyCode: 'EUR',
+        totalInvested: '1000',
+        totalRedeemed: '1200',
+        realizedGainValue: '200',
+        displayTotalInvested: '900',
+        displayTotalRedeemed: '1080',
+        displayRealizedGainValue: '180',
+      }),
+    ];
+
+    const summary = calculateClosedPositionsSummary(closed);
+
+    expect(summary.currencyCode).toBe('EUR');
+    expect(summary.totalInvested).toBe(900);
+    expect(summary.totalRedeemed).toBe(1080);
+    expect(summary.realizedGain).toBe(180);
+    expect(summary.realizedGainPercent).toBe(20);
+  });
+
+  it('falls back to deriving invested from gain & percent if totalInvested is missing', () => {
+    const closed = [
+      makeHolding({
+        symbol: 'MSFT',
+        quantity: '0',
+        realizedGainValue: '250',
+        realizedGainPercent: '25',
+      }),
+    ];
+
+    const summary = calculateClosedPositionsSummary(closed);
+
+    expect(summary.totalInvested).toBe(1000);
+    expect(summary.totalRedeemed).toBe(1250);
+    expect(summary.realizedGain).toBe(250);
+    expect(summary.realizedGainPercent).toBe(25);
   });
 });

@@ -50,3 +50,17 @@ export enum PORTFOLIO_TYPE {
   savings = 'savings',
   other = 'other',
 }
+
+/**
+ * How a portfolio's holdings compute remaining cost basis after a partial
+ * sell. `weighted_average` reduces cost proportionally to units sold (the
+ * app's long-standing default, matches most brokers). `fifo` depletes the
+ * oldest purchase lots first (the method Indian mutual fund platforms like
+ * Groww use, and the legally required method for MF capital-gains tax there).
+ * Only takes effect for `ASSET_CLASS.mutual_fund` holdings — stocks/crypto in
+ * a `fifo` portfolio still use weighted-average.
+ */
+export enum COST_BASIS_METHOD {
+  weighted_average = 'weighted_average',
+  fifo = 'fifo',
+}

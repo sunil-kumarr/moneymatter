@@ -124,7 +124,8 @@
     },
     "assetClasses": {
       "stocks": "Акції",
-      "crypto": "Криптовалюта"
+      "crypto": "Криптовалюта",
+      "mutualFund": "Пайовий фонд"
     }
   }
 }

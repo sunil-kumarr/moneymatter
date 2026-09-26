@@ -1,4 +1,4 @@
-import { ASSET_CLASS, INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types';
+import { ASSET_CLASS, COST_BASIS_METHOD, INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types';
 import { toUtcDateString } from '@common/utils/date';
 
 import type { HoldingState, SecurityRow, TransactionRow } from './types';
@@ -11,7 +11,9 @@ import type { HoldingState, SecurityRow, TransactionRow } from './types';
  * Cost-basis/quantity tracking mirrors `computeHoldingTotals`
  * (`services/investments/holdings/holding-totals.ts`) — keep in sync, or an
  * oversell mid-history (allowed for crypto drift) drops the holding and the
- * next buy reinflates it, ballooning market value.
+ * next buy reinflates it, ballooning market value. FIFO lot depletion (used
+ * only for mutual_fund holdings in a `fifo`-flagged portfolio) mirrors
+ * `cost-basis-replay.ts`'s `applyFifoLeg` for the same reason.
  *
  * Transactions within each portfolio MUST be sorted ascending by date — the
  * inner loop breaks at the first transaction past the snapshot.
@@ -28,6 +30,7 @@ export const computeHoldingsValueByDate = ({
   findPriceForDate,
   getExchangeRate,
   onMissingPrice,
+  costBasisMethodByPortfolioId,
 }: {
   uniqueDates: string[];
   portfolioIds: string[];
@@ -36,6 +39,8 @@ export const computeHoldingsValueByDate = ({
   findPriceForDate: (securityId: string, targetDate: string) => number | null;
   getExchangeRate: (currencyCode: string, dateStr: string) => number;
   onMissingPrice?: ({ securityId, dateStr }: { securityId: string; dateStr: string }) => void;
+  /** Defaults every portfolio to weighted-average when omitted. */
+  costBasisMethodByPortfolioId?: Map<string, COST_BASIS_METHOD>;
 }): Map<string, number> => {
   const holdingsValueByDate = new Map<string, number>();
 
@@ -81,14 +86,28 @@ export const computeHoldingsValueByDate = ({
             costBasis: 0,
             currencyCode: security?.currencyCode ?? tx.currencyCode,
             assetClass: security?.assetClass ?? ASSET_CLASS.other,
+            fifoLots: [],
           });
         }
 
         const holding = holdings.get(securityId)!;
+        const useFifo =
+          holding.assetClass === ASSET_CLASS.mutual_fund &&
+          costBasisMethodByPortfolioId?.get(portfolioId) === COST_BASIS_METHOD.fifo;
 
         if (tx.category === INVESTMENT_TRANSACTION_CATEGORY.buy) {
           const newQuantity = holding.quantity + quantity;
-          if (newQuantity <= 0) {
+          if (useFifo) {
+            if (newQuantity <= 0) {
+              holding.fifoLots = [];
+            } else if (holding.quantity <= 0) {
+              const longProportion = newQuantity / quantity;
+              holding.fifoLots = [{ quantity: newQuantity, costPerUnit: (totalAmount * longProportion) / newQuantity }];
+            } else {
+              holding.fifoLots.push({ quantity, costPerUnit: totalAmount / quantity });
+            }
+            holding.costBasis = holding.fifoLots.reduce((sum, lot) => sum + lot.quantity * lot.costPerUnit, 0);
+          } else if (newQuantity <= 0) {
             holding.costBasis = 0;
           } else if (holding.quantity <= 0) {
             // Buy crosses from short/zero into long — only the long portion is new basis.
@@ -99,7 +118,24 @@ export const computeHoldingsValueByDate = ({
           }
           holding.quantity = newQuantity;
         } else if (tx.category === INVESTMENT_TRANSACTION_CATEGORY.sell) {
-          if (holding.quantity > 0) {
+          if (useFifo) {
+            if (holding.quantity > 0) {
+              let remainingToSell = quantity;
+              const remainingLots: typeof holding.fifoLots = [];
+              for (const lot of holding.fifoLots) {
+                if (remainingToSell <= 0) {
+                  remainingLots.push(lot);
+                } else if (lot.quantity <= remainingToSell) {
+                  remainingToSell -= lot.quantity;
+                } else {
+                  remainingLots.push({ ...lot, quantity: lot.quantity - remainingToSell });
+                  remainingToSell = 0;
+                }
+              }
+              holding.fifoLots = remainingLots;
+            }
+            holding.costBasis = holding.fifoLots.reduce((sum, lot) => sum + lot.quantity * lot.costPerUnit, 0);
+          } else if (holding.quantity > 0) {
             const newQuantity = holding.quantity - quantity;
             if (newQuantity <= 0) {
               holding.costBasis = 0;

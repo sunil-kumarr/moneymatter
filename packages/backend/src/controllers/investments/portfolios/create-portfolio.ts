@@ -1,4 +1,4 @@
-import { PORTFOLIO_TYPE } from '@bt/shared/types/investments';
+import { COST_BASIS_METHOD, PORTFOLIO_TYPE } from '@bt/shared/types/investments';
 import { currencyCode } from '@common/lib/zod/custom-types';
 import { createController } from '@controllers/helpers/controller-factory';
 import { createPortfolio } from '@services/investments/portfolios/create.service';
@@ -12,6 +12,7 @@ export default createController(
       description: z.string().max(500, 'Description must be 500 characters or less').optional(),
       displayCurrencyCode: currencyCode().nullable().optional(),
       isEnabled: z.boolean().default(true),
+      costBasisMethod: z.nativeEnum(COST_BASIS_METHOD).default(COST_BASIS_METHOD.weighted_average),
     }),
   }),
   async ({ user, body }) => {

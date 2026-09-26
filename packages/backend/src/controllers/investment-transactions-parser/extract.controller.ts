@@ -33,7 +33,7 @@ const columnMappingSchema = z.object({
   currency: z.string().nullable(),
   name: z.string().nullable(),
   defaultCurrency: z.string().nullable(),
-  defaultAssetClassHint: z.enum(['crypto', 'stocks']),
+  defaultAssetClassHint: z.enum(['crypto', 'stocks', 'mutual_fund']),
   sideValueMapping: z.record(
     z.string(),
     z.union([z.nativeEnum(INVESTMENT_TRANSACTION_CATEGORY), z.literal(INVESTMENT_IMPORT_SIDE_SKIP)]),

@@ -1,8 +1,11 @@
 import { ACCOUNT_CATEGORIES } from '@bt/shared/types';
+import { COST_BASIS_METHOD } from '@bt/shared/types/investments';
 import { Money } from '@common/types/money';
 import { logger } from '@js/utils';
 import Accounts from '@models/accounts.model';
 import ExchangeRates from '@models/exchange-rates.model';
+import FixedIncomeEvents from '@models/investments/fixed-income-events.model';
+import FixedIncomePositions from '@models/investments/fixed-income-positions.model';
 import InvestmentTransaction from '@models/investments/investment-transaction.model';
 import PortfolioBalances from '@models/investments/portfolio-balances.model';
 import PortfolioTransfers from '@models/investments/portfolio-transfers.model';
@@ -23,13 +26,22 @@ import { Op } from 'sequelize';
 
 import { resolveOldestEventDate } from './date-range';
 import { buildUserRatesMap, createFindLatestUsdRate, createGetExchangeRate } from './exchange-rate-lookup';
+import { computeFixedIncomeByDate } from './fixed-income-value-replay';
 import { computeHoldingsValueByDate } from './holdings-replay';
+import { computeNetInvestedByDate } from './net-invested-replay';
 import { accumulateCashDeltas, computePortfolioCashByDate } from './portfolio-cash-replay';
 import { buildPriceLookupWithPreWindowAnchors } from './security-price-anchors';
 import { createFindPriceForDate } from './security-price-lookup';
-import type { CombinedBalanceHistoryItem, CurrentBalanceRow, SecurityRow, TransactionRow, TransferRow } from './types';
+import type {
+  CombinedBalanceHistoryItem,
+  CurrentBalanceRow,
+  PortfolioValueHistoryItem,
+  SecurityRow,
+  TransactionRow,
+  TransferRow,
+} from './types';
 
-export type { CombinedBalanceHistoryItem } from './types';
+export type { CombinedBalanceHistoryItem, PortfolioValueHistoryItem } from './types';
 
 /**
  * Portfolio slice of the combined history. Runs independently of the accounts
@@ -47,12 +59,12 @@ const calculatePortfolioBalanceHistory = async ({
   maxDate: string;
   uniqueDates: string[];
   userBaseCurrencyPromise: Promise<Pick<UsersCurrencies, 'currencyCode'> | null>;
-}): Promise<Map<string, number> | null> => {
+}): Promise<{ portfolioValuesByDate: Map<string, number>; investedValueByDate: Map<string, number> } | null> => {
   const [userBaseCurrency, portfolios] = await Promise.all([
     userBaseCurrencyPromise,
     Portfolios.findAll({
       where: { userId, isEnabled: true },
-      attributes: ['id'],
+      attributes: ['id', 'costBasisMethod'],
       raw: true,
     }),
   ]);
@@ -62,6 +74,9 @@ const calculatePortfolioBalanceHistory = async ({
   }
 
   const portfolioIds = portfolios.map((p: { id: string }) => p.id);
+  const costBasisMethodByPortfolioId = new Map(
+    portfolios.map((p: { id: string; costBasisMethod: COST_BASIS_METHOD }) => [p.id, p.costBasisMethod]),
+  );
 
   // Fetch cash rows through end-of-TODAY even when the window ends earlier:
   // `computePortfolioCashByDate` anchors on current stored cash and needs
@@ -70,71 +85,79 @@ const calculatePortfolioBalanceHistory = async ({
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const cashFetchMaxDate = maxDate > todayKey ? maxDate : todayKey;
 
-  const [transactions, portfolioTransfers, currentBalances]: [TransactionRow[], TransferRow[], CurrentBalanceRow[]] =
-    await Promise.all([
-      // `raw: true` + narrow attributes on purpose: there is deliberately no
-      // lower date bound (pre-window rows seed opening holdings and cash), so
-      // an active trader's full history loads here. Hydrating model instances
-      // would materialize a Money object per money column per row — enough to
-      // OOM under concurrent dashboard requests. DECIMALs arrive as strings.
-      InvestmentTransaction.findAll({
-        where: {
-          portfolioId: { [Op.in]: portfolioIds },
-          // `date` is TIMESTAMPTZ; end-of-day bound keeps the final day's intraday trades.
-          date: { [Op.lte]: `${cashFetchMaxDate}T23:59:59.999Z` },
-        },
-        order: [
-          ['portfolioId', 'ASC'],
-          ['date', 'ASC'],
-          ['createdAt', 'ASC'],
-        ],
-        attributes: [
-          'portfolioId',
-          'securityId',
-          'category',
-          'date',
-          'quantity',
-          'refAmount',
-          'currencyCode',
-          'settlementAmount',
-          'settlementCurrencyCode',
-        ],
-        raw: true,
-      }) as unknown as Promise<TransactionRow[]>,
-      // Cash that settled inside a portfolio (deposits/withdrawals, account↔portfolio
-      // transfers, portfolio↔portfolio moves, in-portfolio FX) is recorded here.
-      // `date` is DATEONLY, so a `yyyy-MM-dd` upper bound compares as a plain string.
-      // No lower bound: pre-window rows seed the opening cash balance in
-      // `computePortfolioCashByDate`.
-      PortfolioTransfers.findAll({
-        where: {
-          userId,
-          affectsCash: true,
-          date: { [Op.lte]: cashFetchMaxDate },
-          [Op.or]: [{ fromPortfolioId: { [Op.in]: portfolioIds } }, { toPortfolioId: { [Op.in]: portfolioIds } }],
-        },
-        attributes: [
-          'fromPortfolioId',
-          'toPortfolioId',
-          'amount',
-          'currencyCode',
-          'toCurrencyCode',
-          'toAmount',
-          'date',
-        ],
-      }),
-      // Stored cash position per portfolio/currency. Anchors the replay so
-      // writers that bypass InvestmentTransaction/PortfolioTransfers — importer
-      // cash seeds, the test/dev-only `PUT /portfolios/:id/balance` — still
-      // surface in the chart.
-      PortfolioBalances.findAll({
-        where: { portfolioId: { [Op.in]: portfolioIds } },
-        attributes: ['portfolioId', 'currencyCode', 'totalCash', 'refTotalCash'],
-      }),
-    ]);
+  const [transactions, portfolioTransfers, currentBalances, fixedIncomePositions]: [
+    TransactionRow[],
+    TransferRow[],
+    CurrentBalanceRow[],
+    FixedIncomePositions[],
+  ] = await Promise.all([
+    // `raw: true` + narrow attributes on purpose: there is deliberately no
+    // lower date bound (pre-window rows seed opening holdings and cash), so
+    // an active trader's full history loads here. Hydrating model instances
+    // would materialize a Money object per money column per row — enough to
+    // OOM under concurrent dashboard requests. DECIMALs arrive as strings.
+    InvestmentTransaction.findAll({
+      where: {
+        portfolioId: { [Op.in]: portfolioIds },
+        // `date` is TIMESTAMPTZ; end-of-day bound keeps the final day's intraday trades.
+        date: { [Op.lte]: `${cashFetchMaxDate}T23:59:59.999Z` },
+      },
+      order: [
+        ['portfolioId', 'ASC'],
+        ['date', 'ASC'],
+        ['createdAt', 'ASC'],
+      ],
+      attributes: [
+        'portfolioId',
+        'securityId',
+        'category',
+        'date',
+        'quantity',
+        'refAmount',
+        'currencyCode',
+        'settlementAmount',
+        'settlementCurrencyCode',
+      ],
+      raw: true,
+    }) as unknown as Promise<TransactionRow[]>,
+    // Cash that settled inside a portfolio (deposits/withdrawals, account↔portfolio
+    // transfers, portfolio↔portfolio moves, in-portfolio FX) is recorded here.
+    // `date` is DATEONLY, so a `yyyy-MM-dd` upper bound compares as a plain string.
+    // No lower bound: pre-window rows seed the opening cash balance in
+    // `computePortfolioCashByDate`.
+    PortfolioTransfers.findAll({
+      where: {
+        userId,
+        affectsCash: true,
+        date: { [Op.lte]: cashFetchMaxDate },
+        [Op.or]: [{ fromPortfolioId: { [Op.in]: portfolioIds } }, { toPortfolioId: { [Op.in]: portfolioIds } }],
+      },
+      attributes: ['fromPortfolioId', 'toPortfolioId', 'amount', 'currencyCode', 'toCurrencyCode', 'toAmount', 'date'],
+    }),
+    // Stored cash position per portfolio/currency. Anchors the replay so
+    // writers that bypass InvestmentTransaction/PortfolioTransfers — importer
+    // cash seeds, the test/dev-only `PUT /portfolios/:id/balance` — still
+    // surface in the chart.
+    PortfolioBalances.findAll({
+      where: { portfolioId: { [Op.in]: portfolioIds } },
+      attributes: ['portfolioId', 'currencyCode', 'totalCash', 'refTotalCash'],
+    }),
+    // Fixed deposits, bonds, and peer loans — valued separately from the
+    // tradeable-security holdings replay via `computeFixedIncomeByDate`.
+    FixedIncomePositions.findAll({
+      where: { portfolioId: { [Op.in]: portfolioIds } },
+      include: [{ model: FixedIncomeEvents, as: 'events' }],
+    }),
+  ]);
 
-  // A user with portfolios but no trades, transfers, or stored cash has nothing to chart.
-  if (transactions.length === 0 && portfolioTransfers.length === 0 && currentBalances.length === 0) {
+  // A user with portfolios but no trades, transfers, stored cash, or fixed-income
+  // positions has nothing to chart.
+  if (
+    transactions.length === 0 &&
+    portfolioTransfers.length === 0 &&
+    currentBalances.length === 0 &&
+    fixedIncomePositions.length === 0
+  ) {
     return null;
   }
 
@@ -162,6 +185,7 @@ const calculatePortfolioBalanceHistory = async ({
     if (tr.toCurrencyCode) cashCurrencyCodes.push(tr.toCurrencyCode);
   }
   for (const b of currentBalances) cashCurrencyCodes.push(b.currencyCode);
+  for (const p of fixedIncomePositions) cashCurrencyCodes.push(p.currencyCode);
   const currencyCodes = [...new Set([...securities.map((s) => s.currencyCode), ...cashCurrencyCodes])];
 
   // Fetch starting 7 days before minDate to ensure fallback lookups have prior
@@ -286,13 +310,31 @@ const calculatePortfolioBalanceHistory = async ({
       unpricedSecurityIds.add(securityId);
       unpricedDates.add(dateStr);
     },
+    costBasisMethodByPortfolioId,
   });
+
+  const { currentValueByDate: fixedIncomeValueByDate, investedValueByDate: fixedIncomeInvestedByDate } =
+    computeFixedIncomeByDate({ positions: fixedIncomePositions, uniqueDates, getExchangeRate });
 
   const portfolioValuesByDate = new Map<string, number>();
   for (const dateStr of uniqueDates) {
     const holdingsForDate = holdingsValueByDate.get(dateStr) ?? 0;
     const cashForDate = cashInBaseByDate.get(dateStr) ?? 0;
-    portfolioValuesByDate.set(dateStr, Money.fromDecimal(holdingsForDate + cashForDate).toCents());
+    const fixedIncomeForDate = fixedIncomeValueByDate.get(dateStr) ?? 0;
+    portfolioValuesByDate.set(dateStr, Money.fromDecimal(holdingsForDate + cashForDate + fixedIncomeForDate).toCents());
+  }
+
+  const netInvestedByDate = computeNetInvestedByDate({
+    portfolioTransfers,
+    portfolioIdSet: new Set(portfolioIds),
+    uniqueDates,
+    getExchangeRate,
+  });
+  const investedValueByDate = new Map<string, number>();
+  for (const dateStr of uniqueDates) {
+    const netInvestedForDate = netInvestedByDate.get(dateStr) ?? 0;
+    const fixedIncomeInvestedForDate = fixedIncomeInvestedByDate.get(dateStr) ?? 0;
+    investedValueByDate.set(dateStr, Money.fromDecimal(netInvestedForDate + fixedIncomeInvestedForDate).toCents());
   }
 
   // Error (not warn) so the fallback reaches Sentry: silent 1:1 conversion is
@@ -320,7 +362,7 @@ const calculatePortfolioBalanceHistory = async ({
     });
   }
 
-  return portfolioValuesByDate;
+  return { portfolioValuesByDate, investedValueByDate };
 };
 
 /**
@@ -361,7 +403,7 @@ export const getCombinedBalanceHistory = async ({
       accountsBalanceHistory,
       loansBalanceHistory,
       vehicleValuesByDate,
-      portfolioValuesByDate,
+      portfolioBalanceHistory,
       ventureValuesByDate,
       creditLimitSum,
     ] = await withTransaction(async () => {
@@ -412,6 +454,8 @@ export const getCombinedBalanceHistory = async ({
       ]);
     })();
 
+    const portfolioValuesByDate = portfolioBalanceHistory?.portfolioValuesByDate;
+
     if (
       (!accountsBalanceHistory || accountsBalanceHistory.length === 0) &&
       (!loansBalanceHistory || loansBalanceHistory.length === 0) &&
@@ -456,4 +500,48 @@ export const getCombinedBalanceHistory = async ({
     console.error('Error getting optimized combined balance history:', err);
     throw err;
   }
+};
+
+/**
+ * Daily current-value vs. net-invested snapshots across all of a user's
+ * portfolios, for the investments dashboard chart. Shares the same replay
+ * machinery as {@link getCombinedBalanceHistory} (see `calculatePortfolioBalanceHistory`)
+ * so the two stay in sync instead of drifting apart.
+ */
+export const getPortfolioValueHistory = async ({
+  userId,
+  from,
+  to,
+}: {
+  userId: number;
+  from?: string;
+  to?: string;
+}): Promise<PortfolioValueHistoryItem[]> => {
+  const maxDate = to || format(new Date(), 'yyyy-MM-dd');
+  const minDate = from ?? (await resolveOldestEventDate({ userId, fallback: maxDate }));
+
+  const uniqueDates = eachDayOfInterval({
+    start: parseISO(minDate),
+    end: parseISO(maxDate),
+  }).map((date) => format(date, 'yyyy-MM-dd'));
+
+  const userBaseCurrencyPromise = UsersCurrencies.findOne({
+    where: { userId, isDefaultCurrency: true },
+    raw: true,
+    attributes: ['currencyCode'],
+  }) as Promise<Pick<UsersCurrencies, 'currencyCode'> | null>;
+
+  const portfolioBalanceHistory = await withTransaction(() =>
+    calculatePortfolioBalanceHistory({ userId, minDate, maxDate, uniqueDates, userBaseCurrencyPromise }),
+  )();
+
+  if (!portfolioBalanceHistory) return [];
+
+  const { portfolioValuesByDate, investedValueByDate } = portfolioBalanceHistory;
+
+  return uniqueDates.map((dateStr) => ({
+    date: dateStr,
+    currentValue: portfolioValuesByDate.get(dateStr) ?? 0,
+    investedValue: investedValueByDate.get(dateStr) ?? 0,
+  }));
 };

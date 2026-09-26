@@ -7,6 +7,17 @@ import { format } from 'date-fns';
 /** Shared `yyyy-MM-dd` key for the rate/price lookup maps in this folder. */
 export const formatDateKey = (date: Date | string): string => format(date, 'yyyy-MM-dd');
 
+export interface PortfolioValueHistoryItem {
+  date: string;
+  /** Holdings market value + portfolio cash + fixed-income position value, in base-currency cents. */
+  currentValue: number;
+  /**
+   * Cumulative net cash deposited into portfolios (deposits − withdrawals) plus fixed-income
+   * cost basis (recognized on each position's initial-investment date), in base-currency cents.
+   */
+  investedValue: number;
+}
+
 export interface CombinedBalanceHistoryItem {
   date: string;
   /**
@@ -61,4 +72,6 @@ export interface HoldingState {
   costBasis: number;
   currencyCode: string;
   assetClass: ASSET_CLASS;
+  /** Only populated/consumed when this holding's portfolio uses FIFO (mutual funds only). */
+  fifoLots: { quantity: number; costPerUnit: number }[];
 }

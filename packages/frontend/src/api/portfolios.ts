@@ -1,5 +1,6 @@
 import { api } from '@/api/_api';
 import {
+  COST_BASIS_METHOD,
   PORTFOLIO_TYPE,
   PortfolioBalanceModel,
   PortfolioModel,
@@ -7,6 +8,7 @@ import {
 } from '@bt/shared/types/investments';
 import type { PortfolioAnnualizedReturnModel } from '@bt/shared/types/investments/portfolio-annualized-return.model';
 import type { PortfolioSummaryModel } from '@bt/shared/types/investments/portfolio-summary.model';
+import type { PortfolioValueHistoryItem } from '@bt/shared/types/investments/portfolio-value-history.model';
 
 interface CreatePortfolioRequest {
   name: string;
@@ -15,6 +17,8 @@ interface CreatePortfolioRequest {
   /** Currency for displaying portfolio summary/stats. Null/omitted = user's base currency. */
   displayCurrencyCode?: string | null;
   isEnabled?: boolean;
+  /** Cost-basis algorithm for this portfolio's mutual_fund holdings. See `COST_BASIS_METHOD`. */
+  costBasisMethod?: COST_BASIS_METHOD;
 }
 
 export const createPortfolio = async (params: CreatePortfolioRequest): Promise<PortfolioModel> => {
@@ -257,5 +261,19 @@ export const getPortfolioSummary = async ({
 
 export const getPortfoliosAnnualizedReturns = async (): Promise<PortfolioAnnualizedReturnModel[]> => {
   const result = await api.get('/investments/portfolios/annualized-returns');
+  return result;
+};
+
+export const getPortfoliosValueHistory = async ({
+  from,
+  to,
+}: {
+  from?: string;
+  to?: string;
+}): Promise<PortfolioValueHistoryItem[]> => {
+  const params: Record<string, string> = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+  const result = await api.get('/investments/portfolios/value-history', params);
   return result;
 };

@@ -16,7 +16,7 @@
  * imports are a legitimate outcome anyway (one bad row shouldn't bin the rest).
  * Instead we collect per-row errors and return them.
  */
-import { INVESTMENT_TRANSACTION_CATEGORY, isTradeSide } from '@bt/shared/types/investments';
+import { ASSET_CLASS, INVESTMENT_TRANSACTION_CATEGORY, isTradeSide } from '@bt/shared/types/investments';
 import type { InvestmentImportExecuteResponse, InvestmentImportHolding } from '@bt/shared/types/investments';
 import { logger } from '@js/utils';
 import Holdings from '@models/investments/holdings.model';
@@ -125,7 +125,10 @@ export async function executeInvestmentImport({
           throw new Error('Provider upsert completed but the security row was not created.');
         }
         createdSecurities += 1;
-        newSecurityIds.add(security.id);
+        // Mutual funds have no price provider (priced manually) — queuing a
+        // sync for them would just fail per-security after wasted network
+        // calls, so exclude them from the fire-and-forget set below.
+        if (security.assetClass !== ASSET_CLASS.mutual_fund) newSecurityIds.add(security.id);
       }
 
       // 2. Resolve or create Holding for (portfolio, security).

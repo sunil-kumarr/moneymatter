@@ -1252,6 +1252,169 @@ describe('Investment transactions AI import — E2E', () => {
     });
   });
 
+  describe('extract source=csv — mutual funds', () => {
+    /**
+     * Mirrors the columns of a real Indian mutual-fund order-history export
+     * (Scheme Name, Transaction Type, Units, NAV, Date) — Amount is dropped,
+     * Units+NAV already give quantity/price.
+     */
+    function buildMfMapping(overrides: Partial<InvestmentColumnMapping> = {}): InvestmentColumnMapping {
+      return {
+        symbol: 'Scheme Name',
+        date: 'Date',
+        side: 'Transaction Type',
+        quantity: 'Units',
+        price: 'NAV',
+        fees: null,
+        currency: null,
+        name: 'Scheme Name',
+        defaultCurrency: 'INR',
+        defaultAssetClassHint: 'mutual_fund',
+        sideValueMapping: {
+          PURCHASE: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          REDEEM: INVESTMENT_TRANSACTION_CATEGORY.sell,
+        },
+        ...overrides,
+      };
+    }
+
+    it('auto-creates a mutual fund security by scheme name — no provider lookup involved', async () => {
+      const portfolio = await helpers.createPortfolio({
+        payload: helpers.buildPortfolioPayload({ name: 'Mutual Funds' }),
+        raw: true,
+      });
+
+      const csv = [
+        'Scheme Name,Transaction Type,Units,NAV,Date',
+        'Axis ELSS Tax Saver Direct Growth,PURCHASE,27.39,73.01,10 Mar 2022',
+      ].join('\n');
+
+      const result = await helpers.investmentImportExtract({
+        payload: {
+          source: 'csv',
+          fileBase64: encodeFile({ text: csv }),
+          defaultPortfolioId: portfolio.id,
+          columnMapping: buildMfMapping(),
+        },
+        raw: true,
+      });
+
+      expect(result.holdings).toHaveLength(1);
+      const holding = result.holdings[0]!;
+      expect(holding.parsedSymbol).toBe('AXIS ELSS TAX SAVER DIRECT GROWTH');
+      expect(holding.resolvedSecurity?.securityId).toBeNull();
+      expect(holding.resolvedSecurity?.assetClass).toBe(ASSET_CLASS.mutual_fund);
+      expect(holding.resolvedSecurity?.name).toBe('Axis ELSS Tax Saver Direct Growth');
+      expect(holding.resolvedConfidence).toBe('auto');
+      expect(holding.currencyCode).toBe('INR');
+      expect(holding.transactions).toHaveLength(1);
+      expect(holding.transactions[0]!.side).toBe('buy');
+      expect(holding.transactions[0]!.quantity).toBe('27.39');
+      expect(holding.transactions[0]!.price).toBe('73.01');
+    });
+
+    it('returns an empty holdings list for a statement with no transaction rows', async () => {
+      const portfolio = await helpers.createPortfolio({
+        payload: helpers.buildPortfolioPayload({ name: 'Mutual Funds empty' }),
+        raw: true,
+      });
+
+      const csv = 'Scheme Name,Transaction Type,Units,NAV,Date';
+
+      const result = await helpers.investmentImportExtract({
+        payload: {
+          source: 'csv',
+          fileBase64: encodeFile({ text: csv }),
+          defaultPortfolioId: portfolio.id,
+          columnMapping: buildMfMapping(),
+        },
+        raw: true,
+      });
+
+      expect(result.holdings).toHaveLength(0);
+      expect(result.warnings).toHaveLength(0);
+    });
+
+    it('skips rows whose transaction type has not been mapped yet, with a warning', async () => {
+      const portfolio = await helpers.createPortfolio({
+        payload: helpers.buildPortfolioPayload({ name: 'Mutual Funds unmapped type' }),
+        raw: true,
+      });
+
+      const csv = [
+        'Scheme Name,Transaction Type,Units,NAV,Date',
+        'Axis ELSS Tax Saver Direct Growth,PURCHASE,27.39,73.01,10 Mar 2022',
+        // "SWITCH_IN" not present in the user's sideValueMapping.
+        'Axis ELSS Tax Saver Direct Growth,SWITCH_IN,5,80,01 Apr 2022',
+      ].join('\n');
+
+      const result = await helpers.investmentImportExtract({
+        payload: {
+          source: 'csv',
+          fileBase64: encodeFile({ text: csv }),
+          defaultPortfolioId: portfolio.id,
+          columnMapping: buildMfMapping(),
+        },
+        raw: true,
+      });
+
+      expect(result.holdings).toHaveLength(1);
+      expect(result.holdings[0]!.transactions).toHaveLength(1);
+      const skipWarning = result.warnings.find((w) => w.includes('Unmapped side value "SWITCH_IN"'));
+      expect(skipWarning).toBeDefined();
+    });
+
+    it('merges a repeat import of the same scheme into the existing security instead of duplicating it', async () => {
+      const portfolio = await helpers.createPortfolio({
+        payload: helpers.buildPortfolioPayload({ name: 'Mutual Funds repeat' }),
+        raw: true,
+      });
+
+      const firstCsv = [
+        'Scheme Name,Transaction Type,Units,NAV,Date',
+        'Axis ELSS Tax Saver Direct Growth,PURCHASE,27.39,73.01,10 Mar 2022',
+      ].join('\n');
+
+      const firstExtract = await helpers.investmentImportExtract({
+        payload: {
+          source: 'csv',
+          fileBase64: encodeFile({ text: firstCsv }),
+          defaultPortfolioId: portfolio.id,
+          columnMapping: buildMfMapping(),
+        },
+        raw: true,
+      });
+
+      await helpers.investmentImportExecute({
+        payload: { holdings: firstExtract.holdings, skipTempIds: [] },
+        raw: true,
+      });
+
+      const created = await Securities.findOne({ where: { symbol: 'AXIS ELSS TAX SAVER DIRECT GROWTH' } });
+      expect(created).toBeTruthy();
+      expect(created!.assetClass).toBe(ASSET_CLASS.mutual_fund);
+
+      const secondCsv = [
+        'Scheme Name,Transaction Type,Units,NAV,Date',
+        'Axis ELSS Tax Saver Direct Growth,PURCHASE,29.43,67.97,10 Mar 2023',
+      ].join('\n');
+
+      const secondExtract = await helpers.investmentImportExtract({
+        payload: {
+          source: 'csv',
+          fileBase64: encodeFile({ text: secondCsv }),
+          defaultPortfolioId: portfolio.id,
+          columnMapping: buildMfMapping(),
+        },
+        raw: true,
+      });
+
+      expect(secondExtract.holdings).toHaveLength(1);
+      expect(secondExtract.holdings[0]!.resolvedSecurity?.securityId).toBe(created!.id);
+      expect(secondExtract.holdings[0]!.hasExistingHolding).toBe(true);
+    });
+  });
+
   /**
    * The default `express.json()` limit is 100KB. Both endpoints receive the whole
    * uploaded file as base64 (files up to 10MB are accepted), so the request body

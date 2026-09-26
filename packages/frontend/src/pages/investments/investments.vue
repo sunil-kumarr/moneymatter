@@ -48,6 +48,8 @@
     </template>
 
     <template v-else-if="portfolios.length">
+      <InvestmentsValueHistory />
+
       <div class="mb-6 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
         <template v-for="portfolio in portfolios" :key="portfolio.id">
           <Card
@@ -212,6 +214,7 @@ import UiButton from '@/components/lib/ui/button/Button.vue';
 import { Card, CardContent, CardHeader } from '@/components/lib/ui/card';
 import { usePortfolios } from '@/composable/data-queries/portfolios';
 import { cn } from '@/lib/utils';
+import InvestmentsValueHistory from '@/pages/investments/components/investments-value-history.vue';
 import PortfolioCardBalance from '@/pages/investments/components/portfolio-card-balance.vue';
 import PortfoliosTrash from '@/pages/investments/components/portfolios-trash.vue';
 import { ROUTES_NAMES } from '@/routes/constants';

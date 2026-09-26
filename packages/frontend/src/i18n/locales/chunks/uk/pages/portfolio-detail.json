@@ -95,6 +95,8 @@
         "addFirstButton": "Додати першу транзакцію"
       },
       "closedPositions": "Закриті позиції ({count})",
+      "totalInvested": "Інвестовано",
+      "totalRedeemed": "Виведено",
       "stalePrice": "Остання доступна ціна. Ринкова вартість і прибуток можуть бути застарілими.",
       "setNav": {
         "ariaLabel": "Оновити NAV"

@@ -66,6 +66,12 @@
       "displayCurrencyPlaceholder": "Виберіть валюту відображення",
       "displayCurrencyBaseOption": "Базова валюта ({code})",
       "displayCurrencyDescription": "Вартість портфеля та статистика перетворюються на цю валюту за поточним курсом обміну.",
+      "costBasisMethodLabel": "Метод розрахунку базової вартості",
+      "costBasisMethodHint": "Стосується лише активів у складі інвестиційних фондів. Середньозважений метод пропорційно зменшує вартість при кожному продажу; FIFO (використовується індійськими платформами, як Groww/CAMS) продає найстаріші лоти першими.",
+      "costBasisMethods": {
+        "weightedAverage": "Середньозважений",
+        "fifo": "FIFO"
+      },
       "cancelButton": "Скасувати",
       "submitButton": "Зберегти зміни",
       "submitButtonLoading": "Збереження...",

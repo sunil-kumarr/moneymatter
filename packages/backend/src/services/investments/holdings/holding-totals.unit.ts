@@ -1,4 +1,4 @@
-import { INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types/investments';
+import { COST_BASIS_METHOD, INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types/investments';
 import { describe, expect, it } from '@jest/globals';
 import { Big } from 'big.js';
 
@@ -139,6 +139,78 @@ describe('computeHoldingTotals', () => {
 
   it('returns zeroes for an empty transaction list', () => {
     expect(totals([])).toEqual({ quantity: 0, costBasis: 0, refCostBasis: 0 });
+  });
+});
+
+const fifoTotals = (transactions: HoldingTotalsLeg[]) => {
+  const result = computeHoldingTotals({ transactions, method: COST_BASIS_METHOD.fifo });
+  return {
+    quantity: result.quantity.toNumber(),
+    costBasis: result.costBasis.toNumber(),
+    refCostBasis: result.refCostBasis.toNumber(),
+  };
+};
+
+describe('computeHoldingTotals — fifo method', () => {
+  it('depletes the oldest lot first on a partial sell, keeping the newer lot intact', () => {
+    // 10 @ $50 (old lot), 10 @ $70 (new lot). Sell 10 depletes the old lot
+    // entirely — remaining basis is 100% the new lot ($700), not a blended average.
+    expect(fifoTotals([buy(10, 500), buy(10, 700), sell(10)])).toEqual({
+      quantity: 10,
+      costBasis: 700,
+      refCostBasis: 700,
+    });
+  });
+
+  it('depletes across multiple lots when a sell spans more than the oldest lot', () => {
+    // 10 @ $50, 10 @ $70, 10 @ $90. Sell 15: consumes all 10 of the $50 lot
+    // plus 5 of the $70 lot (5 @ $70 = $350) — remaining: 5@70 + 10@90 = 1250.
+    expect(fifoTotals([buy(10, 500), buy(10, 700), buy(10, 900), sell(15)])).toEqual({
+      quantity: 15,
+      costBasis: 1250,
+      refCostBasis: 1250,
+    });
+  });
+
+  it('leaves the basis untouched when selling from a zero/short position (no lots to deplete)', () => {
+    expect(fifoTotals([sell(5, 300), buy(3, 210)])).toEqual({
+      quantity: -2,
+      costBasis: 0,
+      refCostBasis: 0,
+    });
+  });
+
+  it('resets lots to just the rebuy on a full wash sale (sell-all then rebuy)', () => {
+    expect(fifoTotals([buy(10, 500), sell(10, 600), buy(10, 700)])).toEqual({
+      quantity: 10,
+      costBasis: 700,
+      refCostBasis: 700,
+    });
+  });
+
+  it('tracks refCostBasis independently of costBasis per lot', () => {
+    // Two lots with different own/base-currency ratios; sell depletes only the
+    // first lot, so remaining basis is 100% the second lot in both currencies.
+    expect(fifoTotals([buy(10, 500, 450), buy(10, 700, 560), sell(10)])).toEqual({
+      quantity: 10,
+      costBasis: 700,
+      refCostBasis: 560,
+    });
+  });
+
+  it('regression: reproduces the weighted-average vs FIFO cost-basis gap seen on a real mutual fund holding', () => {
+    // Simplified shape of the real discrepancy (see conversation): three SIP
+    // buys at rising NAV, then a partial redemption. Weighted-average spreads
+    // the sell's reduction across all lots; FIFO removes the cheapest (oldest)
+    // lot first, leaving a higher remaining average cost — matching how Groww/
+    // CAMS report Indian mutual fund cost basis.
+    const legs = [buy(10, 300), buy(10, 400), buy(10, 500), sell(10)];
+
+    const weightedAverage = totals(legs);
+    const fifo = fifoTotals(legs);
+
+    expect(weightedAverage).toEqual({ quantity: 20, costBasis: 800, refCostBasis: 800 }); // (300+400+500) × 20/30
+    expect(fifo).toEqual({ quantity: 20, costBasis: 900, refCostBasis: 900 }); // oldest lot (300) removed; 400+500 remain
   });
 });
 

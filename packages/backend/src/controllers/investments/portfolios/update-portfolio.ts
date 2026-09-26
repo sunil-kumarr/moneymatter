@@ -1,4 +1,4 @@
-import { PORTFOLIO_TYPE } from '@bt/shared/types/investments';
+import { COST_BASIS_METHOD, PORTFOLIO_TYPE } from '@bt/shared/types/investments';
 import { currencyCode, recordId } from '@common/lib/zod/custom-types';
 import { createController } from '@controllers/helpers/controller-factory';
 import { updatePortfolio } from '@services/investments/portfolios/update.service';
@@ -16,6 +16,7 @@ export default createController(
         description: z.string().nullable().optional(),
         displayCurrencyCode: currencyCode().nullable().optional(),
         isEnabled: z.boolean().optional(),
+        costBasisMethod: z.nativeEnum(COST_BASIS_METHOD).optional(),
       })
       .strict()
       .refine((data) => Object.keys(data).length > 0, {

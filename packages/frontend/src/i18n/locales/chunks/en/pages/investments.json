@@ -36,6 +36,23 @@
         "purged": "Portfolio permanently deleted",
         "purgeError": "Failed to delete portfolio"
       }
+    },
+    "valueHistory": {
+      "current": "Current",
+      "invested": "Invested",
+      "states": {
+        "noData": "Not enough history to show a chart yet",
+        "loadError": "Failed to load your investment history"
+      },
+      "periods": {
+        "1M": "1M",
+        "3M": "3M",
+        "6M": "6M",
+        "1Y": "1Y",
+        "3Y": "3Y",
+        "5Y": "5Y",
+        "All": "All"
+      }
     }
   }
 }

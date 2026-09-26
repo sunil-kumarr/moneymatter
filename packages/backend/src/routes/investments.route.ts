@@ -18,6 +18,7 @@ import exchangeCurrencyController from '@controllers/investments/portfolios/exch
 import getPortfolioController from '@controllers/investments/portfolios/get-portfolio';
 import getPortfolioBalanceController from '@controllers/investments/portfolios/get-portfolio-balance';
 import getPortfolioSummaryController from '@controllers/investments/portfolios/get-portfolio-summary.controller';
+import getPortfolioValueHistoryController from '@controllers/investments/portfolios/get-portfolio-value-history.controller';
 import getPortfoliosAnnualizedReturnsController from '@controllers/investments/portfolios/get-portfolios-annualized-returns.controller';
 import listPortfolioTransfersController from '@controllers/investments/portfolios/list-portfolio-transfers';
 import listPortfoliosController from '@controllers/investments/portfolios/list-portfolios';
@@ -61,6 +62,12 @@ router.get(
   '/portfolios/annualized-returns',
   validateEndpoint(getPortfoliosAnnualizedReturnsController.schema),
   getPortfoliosAnnualizedReturnsController.handler,
+);
+
+router.get(
+  '/portfolios/value-history',
+  validateEndpoint(getPortfolioValueHistoryController.schema),
+  getPortfolioValueHistoryController.handler,
 );
 
 router.get('/portfolios/:id', validateEndpoint(getPortfolioController.schema), getPortfolioController.handler);

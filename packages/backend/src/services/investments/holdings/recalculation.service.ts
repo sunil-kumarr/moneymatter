@@ -1,9 +1,10 @@
-import { ASSET_CLASS } from '@bt/shared/types/investments';
+import { ASSET_CLASS, COST_BASIS_METHOD } from '@bt/shared/types/investments';
 import { Money } from '@common/types/money';
 import { findOrThrowNotFound } from '@common/utils/find-or-throw-not-found';
 import { t } from '@i18n/index';
 import Holdings from '@models/investments/holdings.model';
 import InvestmentTransaction from '@models/investments/investment-transaction.model';
+import Portfolios from '@models/investments/portfolios.model';
 import Securities from '@models/investments/securities.model';
 import { withTransaction } from '@services/common/with-transaction';
 
@@ -13,10 +14,21 @@ const recalculateHoldingImpl = async (holdingId: { portfolioId: string; security
   const holding = await findOrThrowNotFound({
     query: Holdings.findOne({
       where: holdingId,
-      include: [{ model: Securities, as: 'security', required: true }],
+      include: [
+        { model: Securities, as: 'security', required: true },
+        { model: Portfolios, as: 'portfolio', required: true },
+      ],
     }),
     message: t({ key: 'investments.holdingNotFoundForRecalculation' }),
   });
+
+  // FIFO only ever applies to mutual funds — a portfolio flagged `fifo` still
+  // computes stocks/crypto cost basis with weighted-average. See `COST_BASIS_METHOD`.
+  const method =
+    holding.security?.assetClass === ASSET_CLASS.mutual_fund &&
+    holding.portfolio?.costBasisMethod === COST_BASIS_METHOD.fifo
+      ? COST_BASIS_METHOD.fifo
+      : COST_BASIS_METHOD.weighted_average;
 
   // `date` is a TIMESTAMPTZ, so trades replay in their actual chronological
   // time order — a full wash sale (sell the whole position, then rebuy it later
@@ -48,6 +60,7 @@ const recalculateHoldingImpl = async (holdingId: { portfolioId: string; security
       amount: tx.amount.toBig(),
       refAmount: tx.refAmount.toBig(),
     })),
+    method,
   });
 
   // Crypto holdings may legitimately go negative (staking/fee drift) until the

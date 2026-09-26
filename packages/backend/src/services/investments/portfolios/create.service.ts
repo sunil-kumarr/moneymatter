@@ -1,4 +1,4 @@
-import { PORTFOLIO_TYPE } from '@bt/shared/types/investments';
+import { COST_BASIS_METHOD, PORTFOLIO_TYPE } from '@bt/shared/types/investments';
 import { t } from '@i18n/index';
 import { ValidationError } from '@js/errors';
 import Portfolios from '@models/investments/portfolios.model';
@@ -12,6 +12,7 @@ interface CreatePortfolioParams {
   description?: string | null;
   displayCurrencyCode?: string | null;
   isEnabled?: boolean;
+  costBasisMethod?: COST_BASIS_METHOD;
 }
 
 const createPortfolioImpl = async ({
@@ -21,6 +22,7 @@ const createPortfolioImpl = async ({
   description = null,
   displayCurrencyCode = null,
   isEnabled = true,
+  costBasisMethod = COST_BASIS_METHOD.weighted_average,
 }: CreatePortfolioParams) => {
   // Display currency must be connected to the user, otherwise the summary and
   // holdings endpoints could not resolve an exchange rate for it.
@@ -41,6 +43,7 @@ const createPortfolioImpl = async ({
     description,
     displayCurrencyCode,
     isEnabled,
+    costBasisMethod,
   });
 
   return portfolio;

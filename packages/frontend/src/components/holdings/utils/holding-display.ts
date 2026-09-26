@@ -51,7 +51,9 @@ export const isClosedPosition = (holding: HoldingModel) => {
   if (Number(holding.quantity) !== 0) return false;
   const costBasis = Number(holding.costBasis);
   const realizedGain = Number(holding.realizedGainValue ?? '0');
-  return costBasis > 0 || realizedGain !== 0;
+  const totalInvested = Number(holding.totalInvested ?? '0');
+  const totalRedeemed = Number(holding.totalRedeemed ?? '0');
+  return costBasis > 0 || realizedGain !== 0 || totalInvested > 0 || totalRedeemed > 0;
 };
 
 const compareHoldings = ({
@@ -78,16 +80,16 @@ const compareHoldings = ({
       bv = Number(b.quantity);
       break;
     case 'value':
-      av = Number(a.marketValue || 0);
-      bv = Number(b.marketValue || 0);
+      av = isClosedPosition(a) ? Number(a.displayTotalRedeemed ?? a.totalRedeemed ?? 0) : Number(a.marketValue || 0);
+      bv = isClosedPosition(b) ? Number(b.displayTotalRedeemed ?? b.totalRedeemed ?? 0) : Number(b.marketValue || 0);
       break;
     case 'avgCost':
       av = getAverageCost(a);
       bv = getAverageCost(b);
       break;
     case 'totalCost':
-      av = getTotalCost(a);
-      bv = getTotalCost(b);
+      av = isClosedPosition(a) ? Number(a.displayTotalInvested ?? a.totalInvested ?? 0) : getTotalCost(a);
+      bv = isClosedPosition(b) ? Number(b.displayTotalInvested ?? b.totalInvested ?? 0) : getTotalCost(b);
       break;
     case 'unrealizedGain':
       av = Number(a.unrealizedGainValue || 0);
@@ -154,5 +156,64 @@ export const groupHoldings = ({
     justAdded: sortHoldings({ holdings: justAdded, sortKey, sortDir }),
     active: sortHoldings({ holdings: active, sortKey, sortDir }),
     closed: sortHoldings({ holdings: closed, sortKey, sortDir }),
+  };
+};
+
+export interface ClosedPositionsSummary {
+  count: number;
+  totalInvested: number;
+  totalRedeemed: number;
+  realizedGain: number;
+  realizedGainPercent: number;
+  currencyCode: string;
+}
+
+export const calculateClosedPositionsSummary = (closed: HoldingModel[]): ClosedPositionsSummary => {
+  let totalInvested = 0;
+  let totalRedeemed = 0;
+  let realizedGain = 0;
+  const currencyCode = closed[0]?.displayCurrencyCode || closed[0]?.currencyCode || '';
+
+  for (const holding of closed) {
+    const gain =
+      holding.displayCurrencyCode && holding.displayRealizedGainValue !== undefined
+        ? Number(holding.displayRealizedGainValue)
+        : Number(holding.realizedGainValue ?? 0);
+
+    let invested =
+      holding.displayCurrencyCode && holding.displayTotalInvested !== undefined
+        ? Number(holding.displayTotalInvested)
+        : Number(holding.totalInvested ?? 0);
+
+    let redeemed =
+      holding.displayCurrencyCode && holding.displayTotalRedeemed !== undefined
+        ? Number(holding.displayTotalRedeemed)
+        : Number(holding.totalRedeemed ?? 0);
+
+    // Fallback if totalInvested/totalRedeemed are not provided
+    if (invested === 0 && redeemed === 0) {
+      const gainPercent = Number(holding.realizedGainPercent ?? 0);
+      if (gainPercent !== 0) {
+        invested = (gain / gainPercent) * 100;
+        redeemed = invested + gain;
+      } else if (gain !== 0) {
+        redeemed = gain;
+      }
+    }
+
+    totalInvested += invested;
+    totalRedeemed += redeemed;
+    realizedGain += gain;
+  }
+
+  const realizedGainPercent = totalInvested > 0 ? (realizedGain / totalInvested) * 100 : realizedGain > 0 ? 100 : 0;
+
+  return {
+    count: closed.length,
+    totalInvested,
+    totalRedeemed,
+    realizedGain,
+    realizedGainPercent,
+    currencyCode,
   };
 };

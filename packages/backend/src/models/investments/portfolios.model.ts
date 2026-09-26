@@ -1,5 +1,5 @@
 import { RecordId } from '@bt/shared/types';
-import { PORTFOLIO_TYPE } from '@bt/shared/types/investments';
+import { COST_BASIS_METHOD, PORTFOLIO_TYPE } from '@bt/shared/types/investments';
 import { IdColumn } from '@common/types/id-column';
 import { Table, Column, Model, DataType, ForeignKey, BelongsTo, HasMany, Index } from 'sequelize-typescript';
 
@@ -46,6 +46,19 @@ export default class Portfolios extends Model {
 
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: true })
   isEnabled!: boolean;
+
+  /**
+   * Cost-basis algorithm for this portfolio's holdings after a partial sell.
+   * Only takes effect for `ASSET_CLASS.mutual_fund` holdings — see
+   * `COST_BASIS_METHOD` for why stocks/crypto ignore this and always use
+   * weighted-average.
+   */
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: false,
+    defaultValue: COST_BASIS_METHOD.weighted_average,
+  })
+  costBasisMethod!: COST_BASIS_METHOD;
 
   @Column({ type: DataType.DATE, allowNull: false })
   declare createdAt: Date;

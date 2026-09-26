@@ -54,12 +54,16 @@ interface HoldingValue {
   unrealizedGainPercent?: string;
   realizedGainValue?: string;
   realizedGainPercent?: string;
+  totalInvested?: string;
+  totalRedeemed?: string;
   // Present only when the portfolio has a displayCurrencyCode; percent fields are ratios and need no conversion
   displayCurrencyCode?: string;
   displayCostBasis?: string;
   displayMarketValue?: string;
   displayUnrealizedGainValue?: string;
   displayRealizedGainValue?: string;
+  displayTotalInvested?: string;
+  displayTotalRedeemed?: string;
 }
 
 /**
@@ -289,6 +293,8 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
       unrealizedGainPercent: gains.unrealizedGainPercent.toFixed(2),
       realizedGainValue: gains.realizedGainValue.toFixed(2),
       realizedGainPercent: gains.realizedGainPercent.toFixed(2),
+      totalInvested: gains.totalCostBasisOfSoldShares.toFixed(2),
+      totalRedeemed: gains.totalProceedsFromSoldShares.toFixed(2),
       ...(displayRate !== null && {
         displayCurrencyCode,
         displayCostBasis: toDisplay({
@@ -298,6 +304,8 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
         displayMarketValue: toDisplay({ decimal: marketValue, rate: displayRate }),
         displayUnrealizedGainValue: toDisplay({ decimal: gains.unrealizedGainValue.toFixed(2), rate: displayRate }),
         displayRealizedGainValue: toDisplay({ decimal: gains.realizedGainValue.toFixed(2), rate: displayRate }),
+        displayTotalInvested: toDisplay({ decimal: gains.totalCostBasisOfSoldShares.toFixed(2), rate: displayRate }),
+        displayTotalRedeemed: toDisplay({ decimal: gains.totalProceedsFromSoldShares.toFixed(2), rate: displayRate }),
       }),
     });
   }

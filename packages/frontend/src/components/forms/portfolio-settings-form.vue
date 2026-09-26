@@ -7,7 +7,7 @@ import UiButton from '@/components/lib/ui/button/Button.vue';
 import * as Select from '@/components/lib/ui/select';
 import { NotificationType, useNotificationCenter } from '@/components/notification-center';
 import { useUpdatePortfolio } from '@/composable/data-queries/portfolios';
-import { PORTFOLIO_TYPE, PortfolioModel } from '@bt/shared/types/investments';
+import { COST_BASIS_METHOD, PORTFOLIO_TYPE, PortfolioModel } from '@bt/shared/types/investments';
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -35,11 +35,17 @@ const portfolioTypeLabels: Record<PORTFOLIO_TYPE, string> = {
   [PORTFOLIO_TYPE.other]: 'dialogs.createPortfolio.form.portfolioTypes.other',
 };
 
+const costBasisMethodLabels: Record<COST_BASIS_METHOD, string> = {
+  [COST_BASIS_METHOD.weighted_average]: 'forms.portfolioSettings.costBasisMethods.weightedAverage',
+  [COST_BASIS_METHOD.fifo]: 'forms.portfolioSettings.costBasisMethods.fifo',
+};
+
 const form = reactive({
   name: '',
   portfolioType: PORTFOLIO_TYPE.investment as PORTFOLIO_TYPE,
   description: '',
   displayCurrencyCode: null as string | null,
+  costBasisMethod: COST_BASIS_METHOD.weighted_average as COST_BASIS_METHOD,
 });
 
 watch(
@@ -50,6 +56,7 @@ watch(
       form.portfolioType = p.portfolioType;
       form.description = p.description ?? '';
       form.displayCurrencyCode = p.displayCurrencyCode ?? null;
+      form.costBasisMethod = p.costBasisMethod ?? COST_BASIS_METHOD.weighted_average;
     }
   },
   { immediate: true },
@@ -65,7 +72,8 @@ const isSubmitDisabled = computed(
     (form.name.trim() === props.portfolio.name &&
       form.portfolioType === props.portfolio.portfolioType &&
       (form.description ?? '') === (props.portfolio.description ?? '') &&
-      form.displayCurrencyCode === (props.portfolio.displayCurrencyCode ?? null)),
+      form.displayCurrencyCode === (props.portfolio.displayCurrencyCode ?? null) &&
+      form.costBasisMethod === (props.portfolio.costBasisMethod ?? COST_BASIS_METHOD.weighted_average)),
 );
 
 const onSubmit = async () => {
@@ -76,6 +84,7 @@ const onSubmit = async () => {
       portfolioType: form.portfolioType,
       description: form.description?.trim() || undefined,
       displayCurrencyCode: form.displayCurrencyCode,
+      costBasisMethod: form.costBasisMethod,
     });
 
     addNotification({
@@ -119,6 +128,22 @@ const onSubmit = async () => {
     </div>
 
     <DisplayCurrencySelect v-model="form.displayCurrencyCode" :disabled="updateMutation.isPending.value || disabled" />
+
+    <div>
+      <FieldLabel :label="$t('forms.portfolioSettings.costBasisMethodLabel')">
+        <Select.Select v-model="form.costBasisMethod" :disabled="updateMutation.isPending.value || disabled">
+          <Select.SelectTrigger>
+            <Select.SelectValue />
+          </Select.SelectTrigger>
+          <Select.SelectContent>
+            <Select.SelectItem v-for="m in Object.values(COST_BASIS_METHOD)" :key="m" :value="m">
+              {{ $t(costBasisMethodLabels[m]) }}
+            </Select.SelectItem>
+          </Select.SelectContent>
+        </Select.Select>
+      </FieldLabel>
+      <p class="text-muted-foreground mt-1 text-xs">{{ $t('forms.portfolioSettings.costBasisMethodHint') }}</p>
+    </div>
 
     <TextareaField
       v-model="form.description"

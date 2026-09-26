@@ -152,6 +152,14 @@ export interface InvestmentImportHolding {
  * `InvestmentImportTransactionSide` values. Built at column-mapping time by
  * showing the user the unique values found in the side column.
  */
+/**
+ * Asset classes the transactions-importer can be told to assume for a batch
+ * of rows. Kept separate from `SUPPORTED_ASSET_CLASSES` (enums.ts) because the
+ * importer's symbol-resolution strategy differs per hint — mutual funds have
+ * no ticker-search provider and resolve/create by scheme name instead.
+ */
+export type InvestmentImportAssetClassHint = 'crypto' | 'stocks' | 'mutual_fund';
+
 export interface InvestmentColumnMapping {
   symbol: string;
   date: string;
@@ -173,7 +181,7 @@ export interface InvestmentColumnMapping {
    * single-class (stocks-only or crypto-only) so a per-mapping default is
    * enough — user picks at mapping time.
    */
-  defaultAssetClassHint: 'crypto' | 'stocks';
+  defaultAssetClassHint: InvestmentImportAssetClassHint;
   /**
    * Maps raw CSV side-cell values to canonical sides. Case-sensitive lookup.
    * The `INVESTMENT_IMPORT_SIDE_SKIP` sentinel marks rows we should drop

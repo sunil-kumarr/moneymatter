@@ -40,10 +40,12 @@ import HoldingTransactionsSection from './holding-transactions-section.vue';
 import { useHoldingRowExpansion } from './composables/use-holding-row-expansion';
 import {
   type HoldingSortKey,
+  calculateClosedPositionsSummary,
   getAverageCost,
   getPrice,
   getTotalCost,
   groupHoldings,
+  isClosedPosition,
   isPriceStale,
   sortHoldings,
 } from './utils/holding-display';
@@ -117,6 +119,8 @@ const groupedHoldings = computed(() =>
     justAddedIds: props.justAddedIds,
   }),
 );
+
+const closedSummary = computed(() => calculateClosedPositionsSummary(groupedHoldings.value.closed));
 
 type DisplayRow = { kind: 'holding'; holding: HoldingModel } | { kind: 'closedToggle'; count: number };
 
@@ -418,21 +422,66 @@ const theadLabelStyles = 'block max-w-32 truncate';
               <!-- Inline collapsible "Closed positions" section header -->
               <tr
                 v-if="row.kind === 'closedToggle'"
-                class="bg-muted/40 hover:bg-muted/70 cursor-pointer text-sm transition-colors"
+                class="group bg-muted/40 hover:bg-muted/70 cursor-pointer text-sm transition-colors"
                 @click="closedExpanded = !closedExpanded"
               >
-                <td :class="[cellStyles, 'py-1']">
-                  <Button variant="ghost" size="icon" class="size-8" @click.stop="closedExpanded = !closedExpanded">
-                    <ChevronDownIcon v-if="closedExpanded" class="size-4" />
-                    <ChevronRightIcon v-else class="size-4" />
-                  </Button>
-                </td>
-                <td colspan="9" :class="[cellStyles, 'px-3']">
-                  <div class="text-muted-foreground flex items-center gap-2 font-medium">
-                    <ArchiveIcon class="size-4" />
-                    {{ $t('portfolioDetail.holdingsTable.closedPositions', { count: row.count }) }}
+                <td
+                  :class="[
+                    cellStyles,
+                    'sticky left-0 z-1 bg-[color-mix(in_oklab,var(--muted)_40%,var(--card))] py-1.5 pr-3 font-semibold transition-colors group-hover:bg-[color-mix(in_oklab,var(--muted)_70%,var(--card))]',
+                  ]"
+                >
+                  <div class="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      class="size-8 shrink-0"
+                      @click.stop="closedExpanded = !closedExpanded"
+                    >
+                      <ChevronDownIcon v-if="closedExpanded" class="size-4" />
+                      <ChevronRightIcon v-else class="size-4" />
+                    </Button>
+                    <ArchiveIcon class="text-muted-foreground size-4 shrink-0" />
+                    <span class="whitespace-nowrap">
+                      {{ $t('portfolioDetail.holdingsTable.closedPositions', { count: row.count }) }}
+                    </span>
                   </div>
                 </td>
+                <td colspan="4" :class="[cellStyles, 'px-3']"></td>
+                <td :class="[cellStyles, 'px-3 text-right tabular-nums']">
+                  <div class="font-semibold">
+                    {{ formatCurrency(closedSummary.totalInvested, closedSummary.currencyCode) }}
+                  </div>
+                  <div class="text-muted-foreground text-xs font-normal">
+                    {{ $t('portfolioDetail.holdingsTable.totalInvested') }}
+                  </div>
+                </td>
+                <td :class="[cellStyles, 'px-3 text-right tabular-nums']">
+                  <div class="font-semibold">
+                    {{ formatCurrency(closedSummary.totalRedeemed, closedSummary.currencyCode) }}
+                  </div>
+                  <div class="text-muted-foreground text-xs font-normal">
+                    {{ $t('portfolioDetail.holdingsTable.totalRedeemed') }}
+                  </div>
+                </td>
+                <td :class="[cellStyles, 'text-muted-foreground px-3 text-right']">—</td>
+                <td :class="[cellStyles, 'px-3 text-right']">
+                  <div :class="getGainColorClass({ gainValue: closedSummary.realizedGain })" class="tabular-nums">
+                    <div class="font-semibold">
+                      {{
+                        (closedSummary.realizedGain >= 0 ? '+' : '') +
+                        formatCurrency(closedSummary.realizedGain, closedSummary.currencyCode)
+                      }}
+                    </div>
+                    <div class="text-xs">
+                      {{
+                        (closedSummary.realizedGainPercent >= 0 ? '+' : '') +
+                        closedSummary.realizedGainPercent.toFixed(2)
+                      }}%
+                    </div>
+                  </div>
+                </td>
+                <td :class="[cellStyles, 'py-1 pr-2 text-right']"></td>
               </tr>
               <template v-else>
                 <tr class="hover:bg-muted/30 group text-sm transition-colors">
@@ -450,7 +499,9 @@ const theadLabelStyles = 'block max-w-32 truncate';
                     {{ row.holding.security?.name }}
                   </td>
                   <td :class="[cellStyles, 'px-3 text-right tabular-nums']">
+                    <span v-if="isClosedPosition(row.holding)" class="text-muted-foreground">0</span>
                     <PrecisionNumber
+                      v-else
                       :value="row.holding.quantity"
                       :max-decimals="decimalsForAssetClass(row.holding.security?.assetClass)"
                     />
@@ -483,28 +534,63 @@ const theadLabelStyles = 'block max-w-32 truncate';
                     </DesktopOnlyTooltip>
                   </td>
                   <td :class="[cellStyles, 'text-muted-foreground px-3 text-right tabular-nums']">
-                    {{ formatCurrency(getAverageCost(row.holding), row.holding.currencyCode) }}
+                    <span v-if="isClosedPosition(row.holding)">—</span>
+                    <span v-else>{{ formatCurrency(getAverageCost(row.holding), row.holding.currencyCode) }}</span>
                   </td>
                   <td :class="[cellStyles, 'px-3 text-right tabular-nums']">
-                    {{
-                      formatMoneyCell({
-                        holding: row.holding,
-                        native: getTotalCost(row.holding),
-                        display: row.holding.displayCostBasis,
-                      })
-                    }}
+                    <template v-if="isClosedPosition(row.holding)">
+                      <div class="font-medium">
+                        {{
+                          formatMoneyCell({
+                            holding: row.holding,
+                            native: Number(row.holding.totalInvested ?? 0),
+                            display: row.holding.displayTotalInvested,
+                          })
+                        }}
+                      </div>
+                      <div class="text-muted-foreground text-xs font-normal">
+                        {{ $t('portfolioDetail.holdingsTable.totalInvested') }}
+                      </div>
+                    </template>
+                    <template v-else>
+                      {{
+                        formatMoneyCell({
+                          holding: row.holding,
+                          native: getTotalCost(row.holding),
+                          display: row.holding.displayCostBasis,
+                        })
+                      }}
+                    </template>
                   </td>
                   <td :class="[cellStyles, 'px-3 text-right font-medium tabular-nums']">
-                    {{
-                      formatMoneyCell({
-                        holding: row.holding,
-                        native: Number(row.holding.marketValue || 0),
-                        display: row.holding.displayMarketValue,
-                      })
-                    }}
+                    <template v-if="isClosedPosition(row.holding)">
+                      <div class="font-medium">
+                        {{
+                          formatMoneyCell({
+                            holding: row.holding,
+                            native: Number(row.holding.totalRedeemed ?? 0),
+                            display: row.holding.displayTotalRedeemed,
+                          })
+                        }}
+                      </div>
+                      <div class="text-muted-foreground text-xs font-normal">
+                        {{ $t('portfolioDetail.holdingsTable.totalRedeemed') }}
+                      </div>
+                    </template>
+                    <template v-else>
+                      {{
+                        formatMoneyCell({
+                          holding: row.holding,
+                          native: Number(row.holding.marketValue || 0),
+                          display: row.holding.displayMarketValue,
+                        })
+                      }}
+                    </template>
                   </td>
                   <td :class="[cellStyles, 'px-3 text-right']">
+                    <span v-if="isClosedPosition(row.holding)" class="text-muted-foreground">—</span>
                     <div
+                      v-else
                       :class="getGainColorClass({ gainValue: getUnrealizedGain(row.holding).value })"
                       class="tabular-nums"
                     >
@@ -527,6 +613,7 @@ const theadLabelStyles = 'block max-w-32 truncate';
                     >
                       <div class="font-semibold">
                         {{
+                          (getRealizedGain(row.holding).value >= 0 ? '+' : '') +
                           formatMoneyCell({
                             holding: row.holding,
                             native: getRealizedGain(row.holding).value,
@@ -534,7 +621,12 @@ const theadLabelStyles = 'block max-w-32 truncate';
                           })
                         }}
                       </div>
-                      <div class="text-xs">{{ getRealizedGain(row.holding).percent.toFixed(2) }}%</div>
+                      <div class="text-xs">
+                        {{
+                          (getRealizedGain(row.holding).percent >= 0 ? '+' : '') +
+                          getRealizedGain(row.holding).percent.toFixed(2)
+                        }}%
+                      </div>
                     </div>
                   </td>
                   <td :class="[cellStyles, 'py-1 pr-2 text-right']">

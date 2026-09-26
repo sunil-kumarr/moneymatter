@@ -15,6 +15,7 @@
  */
 import { ASSET_CLASS, isTradeSide } from '@bt/shared/types/investments';
 import type {
+  InvestmentImportAssetClassHint,
   InvestmentImportExtractionResult,
   InvestmentImportTradeSide,
   InvestmentImportTransactionSide,
@@ -43,7 +44,7 @@ export interface NormalizedInvestmentRow {
   /** Raw quote currency literal as it appears in the source (USDT, USD, EUR, ""). */
   currency: string | null;
   /** Best-effort asset class hint; used for symbol resolution. */
-  assetClassHint: 'crypto' | 'stocks';
+  assetClassHint: InvestmentImportAssetClassHint;
 }
 
 interface GroupRowsParams {
@@ -79,13 +80,19 @@ export async function groupRowsIntoHoldings({
   // Majority-vote asset class per ticker. Ties go to crypto — matches the
   // legacy crypto-first behaviour the original implementation had.
   const symbolsWithHints = Array.from(bySymbol.entries()).map(([symbol, symbolRows]) => {
-    let crypto = 0;
-    let stocks = 0;
+    const counts: Record<InvestmentImportAssetClassHint, number> = { crypto: 0, stocks: 0, mutual_fund: 0 };
     for (const r of symbolRows) {
-      if (r.assetClassHint === 'crypto') crypto += 1;
-      else stocks += 1;
+      counts[r.assetClassHint] += 1;
     }
-    return { symbol, assetClassHint: (stocks > crypto ? 'stocks' : 'crypto') as 'crypto' | 'stocks' };
+    let winner: InvestmentImportAssetClassHint = 'crypto';
+    for (const hint of ['stocks', 'mutual_fund'] as const) {
+      if (counts[hint] > counts[winner]) winner = hint;
+    }
+    // Only consumed for the mutual_fund branch, where the scheme name doubles
+    // as the lookup key (uppercased) and the display name (as-written) — the
+    // resolver has no provider to source a properly-cased name from.
+    const name = symbolRows[0]?.name ?? null;
+    return { symbol, assetClassHint: winner, name };
   });
 
   const resolution = await resolveSymbols({

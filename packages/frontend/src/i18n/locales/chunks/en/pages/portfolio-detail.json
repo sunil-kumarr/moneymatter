@@ -95,6 +95,8 @@
         "addFirstButton": "Add first Transaction"
       },
       "closedPositions": "Closed positions ({count})",
+      "totalInvested": "Invested",
+      "totalRedeemed": "Redeemed",
       "stalePrice": "Last available price. Market value and gains may be outdated.",
       "setNav": {
         "ariaLabel": "Update NAV"

@@ -88,6 +88,34 @@
       "principalRepaid": "{percent}% від {amount} основної суми сплачено",
       "debtFree": "Без боргів"
     },
+    "valueHistory": {
+      "principal": "Основна сума",
+      "interest": "Відсотки",
+      "totalCost": "Загальна вартість",
+      "today": "Сьогодні",
+      "allLoans": "Усі кредити",
+      "loanSelectorLabel": "Обрати кредит",
+      "remainingBalance": "Залишок основної суми",
+      "cumulativeInterest": "Нараховані відсотки",
+      "cumulativePrincipal": "Сплачена основна сума",
+      "monthlyPrincipal": "Щомісячне тіло",
+      "monthlyInterest": "Щомісячні відсотки",
+      "monthlyPayment": "Щомісячний платіж",
+      "debtFree": "Виплата {date}",
+      "modes": {
+        "balance": "Залишок і відсотки",
+        "payment": "Щомісячний розподіл"
+      },
+      "periods": {
+        "1Y": "1Р",
+        "3Y": "3Р",
+        "5Y": "5Р",
+        "ALL": "Усе"
+      },
+      "states": {
+        "noData": "Недостатньо даних для побудови графіка амортизації"
+      }
+    },
     "list": {
       "columns": {
         "loan": "Кредит",
