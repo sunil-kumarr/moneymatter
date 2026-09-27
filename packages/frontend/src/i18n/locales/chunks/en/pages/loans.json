@@ -95,16 +95,16 @@
       "today": "Today",
       "allLoans": "All Loans",
       "loanSelectorLabel": "Select loan",
-      "remainingBalance": "Remaining Principal",
-      "cumulativeInterest": "Cumulative Interest",
-      "cumulativePrincipal": "Principal Repaid",
+      "remainingBalance": "Remaining Balance",
+      "cumulativeInterest": "Total Interest Accrued",
+      "cumulativePrincipal": "Total Principal Repaid",
       "monthlyPrincipal": "Monthly Principal",
       "monthlyInterest": "Monthly Interest",
       "monthlyPayment": "Monthly Payment",
       "debtFree": "Payoff {date}",
       "modes": {
-        "balance": "Balance & Interest",
-        "payment": "Monthly Split"
+        "payment": "Payment Breakdown",
+        "balance": "Balance & Total Interest"
       },
       "periods": {
         "1Y": "1Y",

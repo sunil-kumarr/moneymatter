@@ -95,16 +95,16 @@
       "today": "Сьогодні",
       "allLoans": "Усі кредити",
       "loanSelectorLabel": "Обрати кредит",
-      "remainingBalance": "Залишок основної суми",
-      "cumulativeInterest": "Нараховані відсотки",
+      "remainingBalance": "Залишок боргу",
+      "cumulativeInterest": "Загальні нараховані відсотки",
       "cumulativePrincipal": "Сплачена основна сума",
       "monthlyPrincipal": "Щомісячне тіло",
       "monthlyInterest": "Щомісячні відсотки",
       "monthlyPayment": "Щомісячний платіж",
       "debtFree": "Виплата {date}",
       "modes": {
-        "balance": "Залишок і відсотки",
-        "payment": "Щомісячний розподіл"
+        "payment": "Розподіл платежу",
+        "balance": "Залишок і загальні відсотки"
       },
       "periods": {
         "1Y": "1Р",

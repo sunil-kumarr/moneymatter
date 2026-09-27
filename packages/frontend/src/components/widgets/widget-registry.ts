@@ -167,6 +167,20 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     component: () => import('@/components/widgets/subscriptions-overview.vue'),
     needsPeriod: false,
   },
+  'pnl-chart': {
+    id: 'pnl-chart',
+    name: 'dashboard.widgets.registry.pnlChart.name',
+    description: 'dashboard.widgets.registry.pnlChart.description',
+    defaultColSpan: 2,
+    defaultRowSpan: 1,
+    allowedSizes: [
+      { colSpan: 1, rowSpan: 1, label: '1×1' },
+      { colSpan: 2, rowSpan: 1, label: '2×1' },
+      { colSpan: 3, rowSpan: 1, label: '3×1' },
+    ],
+    component: () => import('@/components/widgets/pnl-chart.vue'),
+    needsPeriod: false,
+  },
 };
 
 export const DEFAULT_DASHBOARD_LAYOUT = [

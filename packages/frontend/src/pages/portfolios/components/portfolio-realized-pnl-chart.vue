@@ -1,5 +1,11 @@
 <template>
-  <Card class="border-border bg-card @container/realized-pnl overflow-hidden p-6">
+  <component
+    :is="isDashboardWidget ? 'div' : Card"
+    :class="[
+      '@container/realized-pnl overflow-hidden',
+      isDashboardWidget ? 'flex w-full flex-col justify-between p-0' : 'border-border bg-card p-6',
+    ]"
+  >
     <!-- Loading Skeleton -->
     <div v-if="isLoading && !pnlData" class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-4">
@@ -23,23 +29,84 @@
       <div class="bg-destructive/10 mx-auto mb-3 flex size-10 items-center justify-center rounded-full">
         <AlertCircleIcon class="text-destructive-text size-5" />
       </div>
-      <p class="text-destructive-text text-sm">{{ $t('portfolioDetail.realizedPnlChart.loadError') }}</p>
+      <p class="text-destructive-text text-sm">
+        {{
+          $te('portfolioDetail.realizedPnlChart.loadError')
+            ? $t('portfolioDetail.realizedPnlChart.loadError')
+            : 'Failed to load realised P&L data.'
+        }}
+      </p>
     </div>
 
     <!-- Content -->
     <div v-else class="space-y-4">
-      <!-- Top Row: Realised P&L Header on Left, Period Selectors on Right -->
-      <div class="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p class="text-muted-foreground text-sm font-medium">
-            {{ $t('portfolioDetail.realizedPnlChart.title') }}
-          </p>
-          <h3 class="text-2xl font-bold tracking-tight md:text-3xl" :class="totalPnlColorClass">
-            {{ formattedTotalPnl }}
-          </h3>
+      <!-- Top Row 1: Title & Portfolio Dropdown on Left, Show Unrealized Button on Right -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="text-foreground text-sm font-semibold tracking-tight">
+            {{
+              showUnrealized
+                ? $te('portfolioDetail.realizedPnlChart.totalPnlTitle')
+                  ? $t('portfolioDetail.realizedPnlChart.totalPnlTitle')
+                  : 'Total P&L'
+                : $te('portfolioDetail.realizedPnlChart.title')
+                  ? $t('portfolioDetail.realizedPnlChart.title')
+                  : 'Realised P&L'
+            }}
+          </span>
+          <!-- Dropdown like balance trend to select all portfolios or checkbox multiple together -->
+          <PortfolioMultiSelectDropdown v-if="shouldShowPortfolioSelector" v-model="selectedPortfolioIds" />
         </div>
 
-        <!-- Period Selectors -->
+        <!-- Button: Show / Hide Unrealized PnL -->
+        <Button
+          type="button"
+          size="sm"
+          :variant="showUnrealized ? 'secondary' : 'outline'"
+          class="h-8 px-2.5 text-xs font-medium transition-all"
+          :class="{ 'border-primary/60 text-primary font-semibold shadow-xs': showUnrealized }"
+          @click="showUnrealized = !showUnrealized"
+        >
+          <SparklesIcon class="mr-1.5 size-3.5" :class="{ 'text-primary': showUnrealized }" />
+          {{
+            showUnrealized
+              ? $te('portfolioDetail.realizedPnlChart.hideUnrealized')
+                ? $t('portfolioDetail.realizedPnlChart.hideUnrealized')
+                : 'Hide Unrealized P&L'
+              : $te('portfolioDetail.realizedPnlChart.showUnrealized')
+                ? $t('portfolioDetail.realizedPnlChart.showUnrealized')
+                : 'Show Unrealized P&L'
+          }}
+        </Button>
+      </div>
+
+      <!-- Top Row 2: Headline Amount on Left, Period Selectors & FY Dropdown on Right -->
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h3 class="text-2xl font-bold tracking-tight md:text-3xl" :class="totalPnlColorClass">
+            {{ formattedDisplayTotalPnl }}
+          </h3>
+
+          <div v-if="showUnrealized" class="text-muted-foreground mt-1 flex items-center gap-1.5 text-xs font-medium">
+            <span>
+              {{
+                $te('portfolioDetail.realizedPnlChart.realizedLabel')
+                  ? $t('portfolioDetail.realizedPnlChart.realizedLabel')
+                  : 'Realized'
+              }}: {{ formattedRealizedPnl }}
+            </span>
+            <span>•</span>
+            <span>
+              {{
+                $te('portfolioDetail.realizedPnlChart.unrealizedLabel')
+                  ? $t('portfolioDetail.realizedPnlChart.unrealizedLabel')
+                  : 'Unrealized'
+              }}: {{ formattedUnrealizedPnl }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Period Selectors & FY Dropdown -->
         <div class="flex flex-wrap items-center gap-1.5">
           <Button
             v-for="p in INVESTMENT_HISTORY_PERIODS"
@@ -50,14 +117,20 @@
             class="h-8 px-2.5 text-xs font-medium"
             @click="selectPeriod(p)"
           >
-            {{ $t(`investments.valueHistory.periods.${p}`) }}
+            {{ $te(`investments.valueHistory.periods.${p}`) ? $t(`investments.valueHistory.periods.${p}`) : p }}
           </Button>
 
           <!-- Financial Year Dropdown if available -->
           <div v-if="availableFinancialYears.length > 0" class="ml-1 w-32">
             <Select :model-value="selectedFinancialYear || ''" @update:model-value="selectFinancialYear">
               <SelectTrigger class="h-8 text-xs">
-                <SelectValue :placeholder="$t('portfolioDetail.realizedPnlChart.selectFy')" />
+                <SelectValue
+                  :placeholder="
+                    $te('portfolioDetail.realizedPnlChart.selectFy')
+                      ? $t('portfolioDetail.realizedPnlChart.selectFy')
+                      : 'Select FY'
+                  "
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem v-for="fy in availableFinancialYears" :key="fy" :value="fy">
@@ -105,14 +178,28 @@
                 rx="4"
               />
 
-              <!-- P&L Bar (Green for positive, Red for negative) -->
+              <!-- Realized P&L Bar (Green for positive, Red for negative) -->
               <rect
                 v-if="m.realizedPnl !== 0"
-                :x="getBarX(m.dateKey)"
+                :x="getRealizedBarX(m)"
                 :y="getBarY(m.realizedPnl)"
-                :width="barWidth"
+                :width="getRealizedBarWidth(m)"
                 :height="getBarHeight(m.realizedPnl)"
                 :fill="m.realizedPnl > 0 ? barPositiveColor : barNegativeColor"
+                rx="3"
+                ry="3"
+                class="transition-opacity duration-150"
+                :class="{ 'opacity-80': hoveredIndex !== null && hoveredIndex !== i }"
+              />
+
+              <!-- Unrealized P&L Bar (Violet for positive/projected, Rose for negative) -->
+              <rect
+                v-if="showUnrealized && (m.unrealizedPnl ?? 0) !== 0"
+                :x="getUnrealizedBarX(m)"
+                :y="getBarY(m.unrealizedPnl ?? 0)"
+                :width="getUnrealizedBarWidth(m)"
+                :height="getBarHeight(m.unrealizedPnl ?? 0)"
+                :fill="(m.unrealizedPnl ?? 0) >= 0 ? barUnrealizedColor : barUnrealizedNegColor"
                 rx="3"
                 ry="3"
                 class="transition-opacity duration-150"
@@ -125,6 +212,7 @@
                 :y="innerHeight + 24"
                 text-anchor="middle"
                 class="fill-muted-foreground text-xs font-normal select-none"
+                :class="{ 'fill-primary font-semibold': m.isCurrent }"
               >
                 {{ m.month }}
               </text>
@@ -156,7 +244,11 @@
           <ChartTooltip>
             <ChartTooltipHeader>{{ tooltip.monthLabel }}</ChartTooltipHeader>
             <ChartTooltipRow
-              :label="$t('portfolioDetail.realizedPnlChart.title')"
+              :label="
+                $te('portfolioDetail.realizedPnlChart.title')
+                  ? $t('portfolioDetail.realizedPnlChart.title')
+                  : 'Realised P&L'
+              "
               :value="formatTooltipPnl(tooltip.realizedPnl)"
               :value-class="
                 tooltip.realizedPnl >= 0
@@ -165,43 +257,120 @@
               "
             />
             <ChartTooltipRow
-              :label="$t('portfolioDetail.realizedPnlChart.charges')"
+              v-if="showUnrealized && (tooltip.unrealizedPnl !== 0 || tooltip.isFuture)"
+              :label="
+                $te('portfolioDetail.realizedPnlChart.unrealizedPnl')
+                  ? $t('portfolioDetail.realizedPnlChart.unrealizedPnl')
+                  : 'Unrealized P&L'
+              "
+              :value="formatTooltipPnl(tooltip.unrealizedPnl)"
+              value-class="text-violet-500 font-semibold"
+            />
+            <ChartTooltipRow
+              :label="
+                $te('portfolioDetail.realizedPnlChart.charges')
+                  ? $t('portfolioDetail.realizedPnlChart.charges')
+                  : 'Charges'
+              "
               :value="formatCurrency(tooltip.charges)"
             />
             <ChartTooltipDivider />
             <ChartTooltipRow
-              :label="$t('portfolioDetail.realizedPnlChart.netPnl')"
-              :value="formatTooltipPnl(tooltip.netRealizedPnl)"
+              :label="
+                showUnrealized
+                  ? $te('portfolioDetail.realizedPnlChart.totalNetPnl')
+                    ? $t('portfolioDetail.realizedPnlChart.totalNetPnl')
+                    : 'Total Net P&L'
+                  : $te('portfolioDetail.realizedPnlChart.netPnl')
+                    ? $t('portfolioDetail.realizedPnlChart.netPnl')
+                    : 'Net P&L'
+              "
+              :value="
+                formatTooltipPnl(
+                  showUnrealized ? tooltip.netRealizedPnl + tooltip.unrealizedPnl : tooltip.netRealizedPnl,
+                )
+              "
               :value-class="
-                tooltip.netRealizedPnl >= 0
+                (showUnrealized ? tooltip.netRealizedPnl + tooltip.unrealizedPnl : tooltip.netRealizedPnl) >= 0
                   ? 'text-app-income-color font-semibold'
                   : 'text-app-expense-color font-semibold'
               "
             />
             <ChartTooltipRow
               v-if="tooltip.tradeCount > 0"
-              :label="$t('portfolioDetail.realizedPnlChart.trades')"
+              :label="
+                $te('portfolioDetail.realizedPnlChart.trades')
+                  ? $t('portfolioDetail.realizedPnlChart.trades')
+                  : 'Trades'
+              "
               :value="String(tooltip.tradeCount)"
             />
           </ChartTooltip>
         </div>
       </div>
 
-      <!-- Dashed Separator & Charges Row -->
+      <!-- Dashed Separator & Charges / Legend Row -->
       <div class="border-border/60 border-t border-dashed" />
-      <div class="flex items-center justify-between pt-1">
-        <span class="text-muted-foreground text-sm font-semibold">
-          {{ $t('portfolioDetail.realizedPnlChart.charges') }}
-        </span>
-        <span
-          class="text-foreground border-muted-foreground/60 cursor-help border-b border-dashed pb-0.5 text-sm font-semibold"
-          :title="$t('portfolioDetail.realizedPnlChart.chargesHint')"
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-1.5">
+            <span class="text-muted-foreground text-sm font-semibold">
+              {{
+                $te('portfolioDetail.realizedPnlChart.charges')
+                  ? $t('portfolioDetail.realizedPnlChart.charges')
+                  : 'Charges'
+              }}
+            </span>
+            <span
+              class="text-foreground border-muted-foreground/60 cursor-help border-b border-dashed pb-0.5 text-sm font-semibold"
+              :title="
+                $te('portfolioDetail.realizedPnlChart.chargesHint')
+                  ? $t('portfolioDetail.realizedPnlChart.chargesHint')
+                  : 'Total charges, fees, taxes and levies paid during this period'
+              "
+            >
+              {{ formattedTotalCharges }}
+            </span>
+          </div>
+
+          <!-- Color Legend when Unrealized is active -->
+          <div v-if="showUnrealized" class="flex items-center gap-3 text-xs">
+            <div class="flex items-center gap-1">
+              <span class="size-2.5 rounded-full" :style="{ backgroundColor: barPositiveColor }" />
+              <span class="text-muted-foreground">
+                {{
+                  $te('portfolioDetail.realizedPnlChart.realizedLabel')
+                    ? $t('portfolioDetail.realizedPnlChart.realizedLabel')
+                    : 'Realized'
+                }}
+              </span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="size-2.5 rounded-full" :style="{ backgroundColor: barUnrealizedColor }" />
+              <span class="text-muted-foreground">
+                {{
+                  $te('portfolioDetail.realizedPnlChart.unrealizedLabel')
+                    ? $t('portfolioDetail.realizedPnlChart.unrealizedLabel')
+                    : 'Unrealized'
+                }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="selectedPortfolioIds.length > 0 && shouldShowPortfolioSelector"
+          class="text-muted-foreground text-xs"
         >
-          {{ formattedTotalCharges }}
-        </span>
+          {{
+            $te('portfolioDetail.realizedPnlChart.selectedPortfolios')
+              ? $t('portfolioDetail.realizedPnlChart.selectedPortfolios', { count: selectedPortfolioIds.length })
+              : `${selectedPortfolioIds.length} Portfolios`
+          }}
+        </div>
       </div>
     </div>
-  </Card>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -222,30 +391,71 @@ import {
   type InvestmentHistoryPeriod,
 } from '@/pages/investments/composables/investment-value-history-period';
 import type { MonthlyRealizedPnlItem } from '@bt/shared/types/investments/portfolio-realized-pnl.model';
-import { AlertCircleIcon } from '@lucide/vue';
+import { AlertCircleIcon, SparklesIcon } from '@lucide/vue';
 import { useResizeObserver } from '@vueuse/core';
 import * as d3 from 'd3';
 import { computed, reactive, ref, toRef } from 'vue';
 
-const props = defineProps<{
-  portfolioId: string;
-}>();
+import PortfolioMultiSelectDropdown from './portfolio-multi-select-dropdown.vue';
+
+const props = withDefaults(
+  defineProps<{
+    portfolioId?: string;
+    showPortfolioSelector?: boolean;
+    isDashboardWidget?: boolean;
+  }>(),
+  {
+    portfolioId: 'all',
+    showPortfolioSelector: undefined,
+    isDashboardWidget: false,
+  },
+);
 
 const portfolioId = toRef(props, 'portfolioId');
 
-const selectedPeriod = ref<InvestmentHistoryPeriod | ''>('1Y');
-const selectedFinancialYear = ref<string | null>(null);
+const shouldShowPortfolioSelector = computed(() => {
+  if (props.showPortfolioSelector !== undefined) return props.showPortfolioSelector;
+  return props.portfolioId === 'all' || !props.portfolioId;
+});
+
+import { getCurrentFinancialYear } from './portfolio-realized-pnl-helpers';
+
+const selectedPortfolioIds = ref<string[]>([]);
+const showUnrealized = ref(false);
+
+const currentFy = getCurrentFinancialYear();
+const selectedPeriod = ref<InvestmentHistoryPeriod | ''>('');
+const selectedFinancialYear = ref<string | null>(currentFy);
 
 const queryParams = computed(() => {
+  const params: {
+    period?: string;
+    financialYear?: string;
+    portfolioIds?: string[];
+  } = {};
+
   if (selectedFinancialYear.value) {
-    return { financialYear: selectedFinancialYear.value };
+    params.financialYear = selectedFinancialYear.value;
+  } else {
+    params.period = selectedPeriod.value || '1Y';
   }
-  return { period: selectedPeriod.value || '1Y' };
+
+  if (selectedPortfolioIds.value.length > 0) {
+    params.portfolioIds = selectedPortfolioIds.value;
+  }
+
+  return params;
 });
 
 const { data: pnlData, isLoading, isError } = usePortfolioRealizedPnl(portfolioId, queryParams);
 
-const availableFinancialYears = computed(() => pnlData.value?.availableFinancialYears ?? []);
+const availableFinancialYears = computed(() => {
+  const years = [...(pnlData.value?.availableFinancialYears ?? [])];
+  if (!years.includes(currentFy)) {
+    years.unshift(currentFy);
+  }
+  return years;
+});
 const months = computed(() => pnlData.value?.months ?? []);
 const currencyCode = computed(() => pnlData.value?.currencyCode || 'INR');
 
@@ -275,14 +485,21 @@ const formatSignedCurrency = (val: number) => {
 const formatTooltipPnl = (val: number) => formatSignedCurrency(val);
 
 const totalRealizedPnl = computed(() => pnlData.value?.totalRealizedPnl ?? 0);
+const totalUnrealizedPnl = computed(() => pnlData.value?.totalUnrealizedPnl ?? 0);
+const combinedTotalPnl = computed(() => totalRealizedPnl.value + totalUnrealizedPnl.value);
 const totalCharges = computed(() => pnlData.value?.totalCharges ?? 0);
 
-const formattedTotalPnl = computed(() => formatSignedCurrency(totalRealizedPnl.value));
+const formattedRealizedPnl = computed(() => formatSignedCurrency(totalRealizedPnl.value));
+const formattedUnrealizedPnl = computed(() => formatSignedCurrency(totalUnrealizedPnl.value));
+const formattedDisplayTotalPnl = computed(() =>
+  formatSignedCurrency(showUnrealized.value ? combinedTotalPnl.value : totalRealizedPnl.value),
+);
 const formattedTotalCharges = computed(() => formatCurrency(totalCharges.value));
 
 const totalPnlColorClass = computed(() => {
-  if (totalRealizedPnl.value > 0) return 'text-app-income-color';
-  if (totalRealizedPnl.value < 0) return 'text-destructive-text';
+  const pnl = showUnrealized.value ? combinedTotalPnl.value : totalRealizedPnl.value;
+  if (pnl > 0) return 'text-app-income-color';
+  if (pnl < 0) return 'text-destructive-text';
   return 'text-foreground';
 });
 
@@ -308,27 +525,64 @@ useResizeObserver(containerRef, (entries) => {
 
 const barPositiveColor = '#00d09c';
 const barNegativeColor = '#eb5b3c';
+const barUnrealizedColor = '#8b5cf6';
+const barUnrealizedNegColor = '#f43f5e';
 
 const xScale = computed(() => {
   const keys = months.value.map((m) => m.dateKey);
   return d3.scaleBand().domain(keys).range([0, innerWidth.value]).padding(0.35);
 });
 
-const barWidth = computed(() => {
+const baseBarWidth = computed(() => {
   const bw = xScale.value.bandwidth();
   return Math.min(22, Math.max(6, bw * 0.75));
+});
+
+const dualBarWidth = computed(() => {
+  const bw = xScale.value.bandwidth();
+  return Math.min(13, Math.max(3, bw * 0.38));
 });
 
 const getColumnCenterX = (dateKey: string) => {
   return (xScale.value(dateKey) ?? 0) + xScale.value.bandwidth() / 2;
 };
 
-const getBarX = (dateKey: string) => {
-  return getColumnCenterX(dateKey) - barWidth.value / 2;
+const getRealizedBarX = (m: MonthlyRealizedPnlItem) => {
+  const center = getColumnCenterX(m.dateKey);
+  const hasUnrealized = showUnrealized.value && (m.unrealizedPnl ?? 0) !== 0;
+  if (hasUnrealized) {
+    return center - dualBarWidth.value - 1;
+  }
+  return center - baseBarWidth.value / 2;
+};
+
+const getRealizedBarWidth = (m: MonthlyRealizedPnlItem) => {
+  const hasUnrealized = showUnrealized.value && (m.unrealizedPnl ?? 0) !== 0;
+  return hasUnrealized ? dualBarWidth.value : baseBarWidth.value;
+};
+
+const getUnrealizedBarX = (m: MonthlyRealizedPnlItem) => {
+  const center = getColumnCenterX(m.dateKey);
+  const hasRealized = m.realizedPnl !== 0;
+  if (hasRealized) {
+    return center + 1;
+  }
+  return center - baseBarWidth.value / 2;
+};
+
+const getUnrealizedBarWidth = (m: MonthlyRealizedPnlItem) => {
+  const hasRealized = m.realizedPnl !== 0;
+  return hasRealized ? dualBarWidth.value : baseBarWidth.value;
 };
 
 const yScale = computed(() => {
   const values = months.value.map((m) => m.realizedPnl);
+  if (showUnrealized.value) {
+    for (const m of months.value) {
+      if (m.unrealizedPnl) values.push(m.unrealizedPnl);
+    }
+  }
+
   const maxPnl = Math.max(0, ...values);
   const minPnl = Math.min(0, ...values);
 
@@ -384,18 +638,22 @@ const tooltip = reactive<{
   y: number;
   monthLabel: string;
   realizedPnl: number;
+  unrealizedPnl: number;
   charges: number;
   netRealizedPnl: number;
   tradeCount: number;
+  isFuture: boolean;
 }>({
   visible: false,
   x: 0,
   y: 0,
   monthLabel: '',
   realizedPnl: 0,
+  unrealizedPnl: 0,
   charges: 0,
   netRealizedPnl: 0,
   tradeCount: 0,
+  isFuture: false,
 });
 
 const { updateTooltipPosition } = useChartTooltipPosition({
@@ -407,11 +665,13 @@ const { updateTooltipPosition } = useChartTooltipPosition({
 const handleHover = (m: MonthlyRealizedPnlItem, index: number, event: MouseEvent) => {
   hoveredIndex.value = index;
   tooltip.visible = true;
-  tooltip.monthLabel = `${m.month} ${m.year}`;
+  tooltip.monthLabel = `${m.month} ${m.year}${m.isFuture ? ' (Projected)' : ''}`;
   tooltip.realizedPnl = m.realizedPnl;
+  tooltip.unrealizedPnl = m.unrealizedPnl ?? 0;
   tooltip.charges = m.charges;
   tooltip.netRealizedPnl = m.netRealizedPnl;
   tooltip.tradeCount = m.tradeCount;
+  tooltip.isFuture = !!m.isFuture;
   updateTooltipPosition(event);
 };
 
@@ -431,11 +691,13 @@ const handleTouch = (m: MonthlyRealizedPnlItem, index: number, event: TouchEvent
   if (!touch) return;
   hoveredIndex.value = index;
   tooltip.visible = true;
-  tooltip.monthLabel = `${m.month} ${m.year}`;
+  tooltip.monthLabel = `${m.month} ${m.year}${m.isFuture ? ' (Projected)' : ''}`;
   tooltip.realizedPnl = m.realizedPnl;
+  tooltip.unrealizedPnl = m.unrealizedPnl ?? 0;
   tooltip.charges = m.charges;
   tooltip.netRealizedPnl = m.netRealizedPnl;
   tooltip.tradeCount = m.tradeCount;
+  tooltip.isFuture = !!m.isFuture;
   updateTooltipPosition({ clientX: touch.clientX, clientY: touch.clientY });
 };
 </script>

@@ -13,6 +13,12 @@ export interface MonthlyRealizedPnlItem {
   netRealizedPnl: number;
   /** Number of trade/sell events in this month */
   tradeCount: number;
+  /** Unrealized profit/loss for this month (e.g. current open positions in current month, or future projected maturities/interest) */
+  unrealizedPnl?: number;
+  /** Whether this month is in the future relative to today */
+  isFuture?: boolean;
+  /** Whether this month is the current month relative to today */
+  isCurrent?: boolean;
 }
 
 export interface PortfolioRealizedPnlResponse {
@@ -25,6 +31,8 @@ export interface PortfolioRealizedPnlResponse {
   totalCharges: number;
   /** Net realized P&L (totalRealizedPnl - totalCharges) */
   netRealizedPnl: number;
+  /** Total unrealized P&L for active period (current month + future months in period) */
+  totalUnrealizedPnl?: number;
   /** Active period identifier, e.g. 'FY 2023-24' or '1Y' */
   period: string;
   /** List of financial years available in this portfolio's transaction history */

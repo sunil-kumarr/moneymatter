@@ -22,7 +22,7 @@
           :value="formatCurrency(tooltip.currentValue)"
         />
         <ChartTooltipRow
-          v-if="tooltip.projectedValue != null"
+          v-if="showFuture && tooltip.projectedValue != null"
           color="#10b981"
           :label="$t('investments.valueHistory.expectedMaturity')"
           :value="formatCurrency(tooltip.projectedValue)"
@@ -50,10 +50,16 @@ import { ChartLineIcon } from '@lucide/vue';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, nextTick, reactive, ref, watch } from 'vue';
 
-const props = defineProps<{
-  points: PortfolioValueHistoryItem[];
-  currencyCode?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    points: PortfolioValueHistoryItem[];
+    currencyCode?: string;
+    showFuture?: boolean;
+  }>(),
+  {
+    showFuture: true,
+  },
+);
 
 const { formatBaseCurrency, formatAmountByCurrencyCode, getCurrencySymbol } = useFormatCurrency();
 
@@ -94,16 +100,21 @@ type ChartPoint = {
   projectedValue: number | null;
 };
 
-const chartData = computed<ChartPoint[]>(() =>
-  props.points
+const chartData = computed<ChartPoint[]>(() => {
+  let pts = props.points;
+  if (!props.showFuture) {
+    pts = pts.filter((point) => point.currentValue != null);
+  }
+
+  return pts
     .map((point) => ({
       date: parseISO(point.date).getTime(),
       currentValue: point.currentValue != null ? point.currentValue : null,
       investedValue: point.investedValue,
-      projectedValue: point.projectedValue != null ? point.projectedValue : null,
+      projectedValue: props.showFuture && point.projectedValue != null ? point.projectedValue : null,
     }))
-    .sort((a, b) => a.date - b.date),
-);
+    .sort((a, b) => a.date - b.date);
+});
 
 const renderChart = () => {
   if (!svgRef.value || !containerRef.value || chartData.value.length < 2) return;
@@ -129,7 +140,7 @@ const renderChart = () => {
   const allValues = chartData.value.flatMap((d) => [
     ...(d.currentValue != null ? [d.currentValue] : []),
     d.investedValue,
-    ...(d.projectedValue != null ? [d.projectedValue] : []),
+    ...(props.showFuture && d.projectedValue != null ? [d.projectedValue] : []),
   ]);
   const [yMinRaw, yMaxRaw] = d3.extent(allValues) as [number, number];
   const yPadding = (yMaxRaw - yMinRaw) * 0.1 || Math.abs(yMaxRaw) * 0.1 || 100;
@@ -166,7 +177,7 @@ const renderChart = () => {
   gradient.append('stop').attr('offset', '100%').attr('stop-color', 'var(--primary)').attr('stop-opacity', 0);
 
   const currentPoints = chartData.value.filter((d) => d.currentValue != null);
-  const projectedPoints = chartData.value.filter((d) => d.projectedValue != null);
+  const projectedPoints = props.showFuture ? chartData.value.filter((d) => d.projectedValue != null) : [];
 
   if (currentPoints.length >= 2) {
     const area = d3
@@ -322,8 +333,18 @@ const renderChart = () => {
       if (!d0) return;
 
       const d = d1 && x0 - d0.date > d1.date - x0 ? d1 : d0;
-      const targetYVal = d.currentValue != null ? d.currentValue : (d.projectedValue ?? d.investedValue);
-      const dotColor = d.currentValue != null ? 'var(--primary)' : '#10b981';
+      const targetYVal =
+        d.currentValue != null
+          ? d.currentValue
+          : props.showFuture && d.projectedValue != null
+            ? d.projectedValue
+            : d.investedValue;
+      const dotColor =
+        d.currentValue != null
+          ? 'var(--primary)'
+          : props.showFuture && d.projectedValue != null
+            ? '#10b981'
+            : colors.text;
 
       hoverDot.attr('cx', xScale(d.date)).attr('cy', yScale(targetYVal)).attr('fill', dotColor);
       hoverLine.attr('x1', xScale(d.date)).attr('x2', xScale(d.date)).attr('stroke', dotColor);
@@ -350,7 +371,7 @@ const renderChart = () => {
 useResizeObserver(containerRef, renderChart);
 
 watch(
-  chartData,
+  [chartData, () => props.showFuture],
   async () => {
     await nextTick();
     renderChart();

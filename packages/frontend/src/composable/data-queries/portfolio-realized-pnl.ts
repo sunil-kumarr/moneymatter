@@ -19,6 +19,7 @@ export const usePortfolioRealizedPnl = (
     queryKey: computed(() => [
       ...VUE_QUERY_CACHE_KEYS.portfolioRealizedPnl,
       resolvedParams.value.portfolioId,
+      resolvedParams.value.portfolioIds?.slice().sort().join(','),
       resolvedParams.value.period,
       resolvedParams.value.financialYear,
       resolvedParams.value.from,

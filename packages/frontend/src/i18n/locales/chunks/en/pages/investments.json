@@ -42,6 +42,8 @@
       "invested": "Invested",
       "expectedMaturity": "Expected Maturity",
       "today": "Today",
+      "showFutureReturns": "Show Future Returns",
+      "hideFutureReturns": "Hide Future Returns",
       "states": {
         "noData": "Not enough history to show a chart yet",
         "loadError": "Failed to load your investment history"

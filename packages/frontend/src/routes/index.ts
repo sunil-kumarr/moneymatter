@@ -27,7 +27,14 @@ const routes: RouteRecordRaw[] = [
         path: '/dashboard',
         name: ROUTES_NAMES.home,
         component: () => import('@/pages/dashboard/dashboard.vue'),
-        meta: { i18nChunks: ['pages/dashboard', 'pages/transactions'] as I18nChunkName[] },
+        meta: {
+          i18nChunks: [
+            'pages/dashboard',
+            'pages/transactions',
+            'pages/portfolio-detail',
+            'pages/investments',
+          ] as I18nChunkName[],
+        },
       },
       {
         path: '/accounts',

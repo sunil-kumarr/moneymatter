@@ -57,18 +57,8 @@
           </Select>
         </div>
 
-        <!-- Mode Toggle (Balance vs Monthly Payment) -->
+        <!-- Mode Toggle (Payment Breakdown vs Balance) -->
         <div class="bg-muted inline-flex items-center rounded-lg p-0.5 text-xs">
-          <button
-            type="button"
-            class="rounded-md px-2.5 py-1 font-medium transition-colors"
-            :class="
-              mode === 'balance' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-            "
-            @click="mode = 'balance'"
-          >
-            {{ $t('loans.valueHistory.modes.balance') }}
-          </button>
           <button
             type="button"
             class="rounded-md px-2.5 py-1 font-medium transition-colors"
@@ -78,6 +68,16 @@
             @click="mode = 'payment'"
           >
             {{ $t('loans.valueHistory.modes.payment') }}
+          </button>
+          <button
+            type="button"
+            class="rounded-md px-2.5 py-1 font-medium transition-colors"
+            :class="
+              mode === 'balance' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+            "
+            @click="mode = 'balance'"
+          >
+            {{ $t('loans.valueHistory.modes.balance') }}
           </button>
         </div>
       </div>
@@ -131,7 +131,7 @@ const periods = ['1Y', '3Y', '5Y', 'ALL'] as const;
 type LoanAmortizationPeriod = (typeof periods)[number];
 
 const selectedLoanId = ref<string>('all');
-const mode = useSessionStorage<'balance' | 'payment'>('loans-amortization-mode', 'balance');
+const mode = useSessionStorage<'payment' | 'balance'>('loans-amortization-mode-v2', 'payment');
 const period = useSessionStorage<LoanAmortizationPeriod>('loans-amortization-period', 'ALL');
 
 const { formatAmountByCurrencyCode } = useFormatCurrency();
@@ -186,8 +186,11 @@ const hasData = computed(() => summary.value.points.length > 0 && summary.value.
 const currentMonthIndex = computed(() => {
   const now = new Date();
   const points = summary.value.points;
-  const idx = points.findIndex((p) => isAfter(p.date, now));
-  return idx >= 0 ? idx : points.length - 1;
+  if (!points.length) return 0;
+  const idx = points.findIndex((p) => (p.monthlyPayment > 0 || p.month > 0) && isAfter(p.date, now));
+  if (idx >= 0) return idx;
+  const lastActiveIdx = points.findLastIndex((p) => p.monthlyPayment > 0);
+  return lastActiveIdx >= 0 ? lastActiveIdx : points.length - 1;
 });
 
 const primaryMetricValue = computed(() => {
@@ -195,7 +198,7 @@ const primaryMetricValue = computed(() => {
     return summary.value.currentBalance;
   }
   const currPoint = summary.value.points[currentMonthIndex.value];
-  return currPoint?.monthlyPrincipal ?? 0;
+  return currPoint?.monthlyPrincipal ?? summary.value.points[1]?.monthlyPrincipal ?? 0;
 });
 
 const secondaryMetricValue = computed(() => {
@@ -203,7 +206,7 @@ const secondaryMetricValue = computed(() => {
     return summary.value.totalInterest;
   }
   const currPoint = summary.value.points[currentMonthIndex.value];
-  return currPoint?.monthlyInterest ?? 0;
+  return currPoint?.monthlyInterest ?? summary.value.points[1]?.monthlyInterest ?? 0;
 });
 
 const payoffDateDisplay = computed(() => {

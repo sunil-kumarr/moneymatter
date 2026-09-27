@@ -113,16 +113,34 @@ interface ChartPoint {
   raw: LoanAmortizationPoint;
 }
 
-const chartData = computed<ChartPoint[]>(() =>
-  props.points
+const chartData = computed<ChartPoint[]>(() => {
+  let pts = props.points;
+  if (props.mode === 'payment') {
+    const paymentPoints = pts.filter((p) => p.monthlyPayment > 0 || p.month > 0);
+    if (paymentPoints.length >= 2) {
+      pts = paymentPoints;
+    } else if (paymentPoints.length === 1 && pts.length >= 2) {
+      pts = [
+        {
+          ...pts[0]!,
+          monthlyPrincipal: paymentPoints[0]!.monthlyPrincipal,
+          monthlyInterest: paymentPoints[0]!.monthlyInterest,
+          monthlyPayment: paymentPoints[0]!.monthlyPayment,
+        },
+        paymentPoints[0]!,
+      ];
+    }
+  }
+
+  return pts
     .map((p) => ({
       date: p.date.getTime(),
       principal: props.mode === 'balance' ? p.remainingPrincipal : p.monthlyPrincipal,
       interest: props.mode === 'balance' ? p.cumulativeInterest : p.monthlyInterest,
       raw: p,
     }))
-    .sort((a, b) => a.date - b.date),
-);
+    .sort((a, b) => a.date - b.date);
+});
 
 const renderChart = () => {
   if (!svgRef.value || !containerRef.value || chartData.value.length < 2) return;

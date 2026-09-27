@@ -222,6 +222,10 @@
         "plannedOverview": {
           "name": "Planned overview",
           "description": "Pending planned transactions and your projected balance"
+        },
+        "pnlChart": {
+          "name": "P&L Trend",
+          "description": "Realized and unrealized profit & loss over time across your investment portfolios"
         }
       }
     },

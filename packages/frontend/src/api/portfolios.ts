@@ -288,6 +288,7 @@ export const getPortfoliosValueHistory = async ({
 
 export interface GetPortfolioRealizedPnlParams {
   portfolioId: string;
+  portfolioIds?: string[];
   from?: string;
   to?: string;
   period?: string;
@@ -296,12 +297,14 @@ export interface GetPortfolioRealizedPnlParams {
 
 export const getPortfolioRealizedPnl = async ({
   portfolioId,
+  portfolioIds,
   from,
   to,
   period,
   financialYear,
 }: GetPortfolioRealizedPnlParams): Promise<PortfolioRealizedPnlResponse> => {
   const params: Record<string, string> = {};
+  if (portfolioIds && portfolioIds.length > 0) params.portfolioIds = portfolioIds.join(',');
   if (from) params.from = from;
   if (to) params.to = to;
   if (period) params.period = period;

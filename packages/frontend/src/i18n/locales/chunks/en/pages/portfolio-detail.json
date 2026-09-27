@@ -27,12 +27,21 @@
     },
     "realizedPnlChart": {
       "title": "Realised P&L",
+      "totalPnlTitle": "Total P&L",
+      "showUnrealized": "Show Unrealized P&L",
+      "hideUnrealized": "Hide Unrealized P&L",
+      "unrealizedPnl": "Unrealized P&L",
+      "realizedLabel": "Realized",
+      "unrealizedLabel": "Unrealized",
+      "totalNetPnl": "Total Net P&L",
       "charges": "Charges",
       "chargesHint": "Total charges, fees, taxes and levies paid during this period",
       "netPnl": "Net P&L",
       "trades": "Trades",
       "selectFy": "Select FY",
-      "loadError": "Failed to load realised P&L data."
+      "loadError": "Failed to load realised P&L data.",
+      "allPortfolios": "All Portfolios",
+      "selectedPortfolios": "{count} Portfolios"
     },
     "cashBalances": {
       "title": "Cash Balances",
