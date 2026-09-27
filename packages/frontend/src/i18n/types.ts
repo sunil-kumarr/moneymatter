@@ -30,6 +30,7 @@ const I18N_CHUNKS = [
   'pages/loans',
   'pages/portfolio-detail',
   'pages/venture',
+  'pages/income',
   'pages/import-csv',
   'pages/import-statement',
   'pages/import-ynab',

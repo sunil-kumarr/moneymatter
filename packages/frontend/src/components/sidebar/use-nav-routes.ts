@@ -13,6 +13,8 @@ export const useSidebarNavRoutes = () => {
       route.name === ROUTES_NAMES.accountIntegrationDetails ||
       route.name === ROUTES_NAMES.loans ||
       route.name === ROUTES_NAMES.loanDetail ||
+      route.name === ROUTES_NAMES.income ||
+      route.name === ROUTES_NAMES.incomeSourceDetail ||
       route.name === ROUTES_NAMES.investments ||
       route.name === ROUTES_NAMES.portfolioDetail ||
       route.name === ROUTES_NAMES.portfolioTransactionsImport ||

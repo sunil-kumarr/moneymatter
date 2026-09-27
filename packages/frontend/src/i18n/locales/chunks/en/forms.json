@@ -312,6 +312,66 @@
         "asOfInFuture": "Date can't be in the future"
       },
       "balanceExceedsPrincipalWarning": "Outstanding balance is higher than the original principal – double-check these amounts."
+    },
+    "incomeSource": {
+      "nameLabel": "Job name",
+      "namePlaceholder": "e.g. Google - Senior Engineer",
+      "employerNameLabel": "Employer name",
+      "employerNamePlaceholder": "e.g. Google",
+      "jobTitleLabel": "Job title",
+      "jobTitlePlaceholder": "e.g. Senior Engineer",
+      "sourceTypeLabel": "Source type",
+      "payCadenceLabel": "Pay cadence",
+      "currencyLabel": "Currency",
+      "startDateLabel": "Start date",
+      "expectedAnnualCtcLabel": "Expected annual CTC (optional)",
+      "expectedAnnualCtcPlaceholder": "e.g. 1800000",
+      "payoutAccountLabel": "Payout account",
+      "payoutAccountPlaceholder": "Optional — account salary is usually credited to",
+      "taxRegimeLabel": "Tax regime",
+      "taxRegimePlaceholder": "e.g. New Regime",
+      "employerIdentifierLabel": "Employer identifier",
+      "employerIdentifierPlaceholder": "e.g. tax or registration ID",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Optional notes",
+      "cancelButton": "Cancel",
+      "submitButton": "Add job",
+      "submitButtonLoading": "Adding…",
+      "saveButton": "Save changes",
+      "errors": {
+        "required": "This field is required."
+      },
+      "notifications": {
+        "createSuccess": "Job added.",
+        "createError": "Failed to add the job. Please try again.",
+        "updateSuccess": "Job updated",
+        "updateError": "Failed to update the job"
+      }
+    },
+    "salaryCredit": {
+      "creditTypeLabel": "Credit type",
+      "creditDateLabel": "Credit date",
+      "componentsLabel": "Payslip Components",
+      "addComponent": "Add Line",
+      "componentNameLabel": "Component",
+      "componentKindLabel": "Kind",
+      "componentAmountLabel": "Amount",
+      "noComponents": "No components yet — add a line for each earning or deduction.",
+      "netPreview": "Net for this credit",
+      "linkTransactionLabel": "Link a transaction (optional)",
+      "linkTransactionButton": "Link transaction",
+      "removeLinkedTransaction": "Remove linked transaction",
+      "notesLabel": "Notes",
+      "cancelButton": "Cancel",
+      "submitButton": "Add credit",
+      "submitButtonLoading": "Adding…",
+      "saveButton": "Save changes",
+      "notifications": {
+        "createSuccess": "Salary credit added.",
+        "createError": "Failed to add the salary credit. Please try again.",
+        "updateSuccess": "Salary credit updated",
+        "updateError": "Failed to update the salary credit"
+      }
     }
   },
   "fields": {

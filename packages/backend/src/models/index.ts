@@ -18,6 +18,10 @@ import { connection } from './connection';
 import CurrenciesModel from './currencies.model';
 import ExchangeRatesModel from './exchange-rates.model';
 import FeatureUsagesModel from './feature-usages.model';
+import IncomeCreditComponentsModel from './income/income-credit-components.model';
+import IncomeCreditLinksModel from './income/income-credit-links.model';
+import IncomeCreditsModel from './income/income-credits.model';
+import IncomeSourcesModel from './income/income-sources.model';
 import FixedIncomeEventLinksModel from './investments/fixed-income-event-links.model';
 import FixedIncomeEventsModel from './investments/fixed-income-events.model';
 import FixedIncomePositionsModel from './investments/fixed-income-positions.model';
@@ -133,6 +137,10 @@ const models = [
   FixedIncomePositionsModel,
   FixedIncomeEventsModel,
   FixedIncomeEventLinksModel,
+  IncomeSourcesModel,
+  IncomeCreditsModel,
+  IncomeCreditComponentsModel,
+  IncomeCreditLinksModel,
   SubscriptionsModel,
   SubscriptionPeriodsModel,
   SubscriptionPeriodNotificationsModel,

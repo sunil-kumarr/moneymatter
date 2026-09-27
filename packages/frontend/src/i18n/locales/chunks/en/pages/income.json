@@ -1,0 +1,160 @@
+{
+  "income": {
+    "title": "Income",
+    "createButton": "Add Job",
+    "loadError": "Failed to load income sources.",
+    "tryAgain": "Try again",
+    "empty": {
+      "title": "No income sources yet",
+      "description": "Track your jobs and salary credits to see your income trends over time.",
+      "createFirstButton": "Add your first job"
+    },
+    "list": {
+      "activeSectionTitle": "Active",
+      "endedSectionTitle": "Ended",
+      "endedBadge": "Ended",
+      "totalIncome": "Total income",
+      "avgMonthly": "Avg. monthly",
+      "lastCredit": "Last credit: {date}",
+      "card": {
+        "moreAriaLabel": "More actions",
+        "view": "View",
+        "delete": "Delete"
+      }
+    },
+    "detail": {
+      "backToList": "Back to income",
+      "loading": "Loading…",
+      "loadingDetails": "Loading details…",
+      "loadError": "Failed to load this income source.",
+      "tryAgain": "Try again",
+      "notFoundTitle": "Income source not found",
+      "notFoundDescription": "This income source may have been deleted or you don't have access to it.",
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      }
+    },
+    "summary": {
+      "loadError": "Failed to load the income summary.",
+      "yoy": "YoY",
+      "totalNet": "Total net income",
+      "baseCurrencyEquivalent": "≈ {value} in your base currency",
+      "metrics": {
+        "ytd": "{fy} to date",
+        "avgMonthly": "Avg. monthly",
+        "runRate": "Annual run-rate",
+        "deductionRate": "Effective deduction rate"
+      },
+      "lastRaise": "Last raise: +{amount} (+{pct}%) on {date}",
+      "expectedCtc": "Expected annual CTC",
+      "realized": "realized"
+    },
+    "chart": {
+      "loadError": "Failed to load the income chart.",
+      "monthlyTitle": "Monthly income",
+      "cumulativeTitle": "Cumulative income",
+      "viewMonthly": "Monthly",
+      "viewCumulative": "Cumulative",
+      "monthlyHeadline": "Net income this period",
+      "cumulativeHeadline": "Cumulative net income",
+      "selectFy": "Select FY",
+      "empty": "No credits in this period",
+      "periods": {
+        "1M": "1M",
+        "3M": "3M",
+        "6M": "6M",
+        "1Y": "1Y",
+        "3Y": "3Y",
+        "5Y": "5Y",
+        "All": "All"
+      },
+      "cumulativeNet": "Cumulative net",
+      "net": "Net",
+      "gross": "Gross",
+      "deductions": "Deductions"
+    },
+    "dialog": {
+      "createTitle": "Add a job",
+      "createDescription": "Track a salary, freelance gig, or other income source. You can edit anything later.",
+      "editTitle": "Edit job",
+      "deleteTitle": "Delete job",
+      "deleteDescription": "Permanently removes this job and all its salary credits. This cannot be undone.",
+      "deleteButton": "Delete",
+      "deleteButtonLoading": "Deleting…",
+      "deleteSuccess": "Job deleted",
+      "deleteError": "Could not delete the job",
+      "addCreditTitle": "Add salary credit",
+      "editCreditTitle": "Edit salary credit",
+      "duplicateCreditTitle": "Duplicate salary credit"
+    },
+    "credits": {
+      "title": "Salary Credits",
+      "addButton": "Add Credit",
+      "loading": "Loading…",
+      "empty": "No salary credits recorded yet.",
+      "columns": {
+        "date": "Date",
+        "type": "Type",
+        "gross": "Gross",
+        "deductions": "Deductions",
+        "net": "Net"
+      },
+      "editButton": "Edit",
+      "duplicateButton": "Duplicate",
+      "deleteButton": "Delete",
+      "deleteSuccess": "Salary credit deleted",
+      "deleteError": "Could not delete the salary credit",
+      "linkedTransactions": {
+        "title": "Linked Transactions",
+        "empty": "No transactions linked yet.",
+        "linkButton": "Link transaction",
+        "unlinkButton": "Unlink transaction",
+        "unlinkSuccess": "Transaction unlinked.",
+        "unlinkError": "Failed to unlink transaction.",
+        "tooltip": "Linked to a transaction"
+      },
+      "linkDialog": {
+        "title": "Link a transaction",
+        "description": "Pick an existing income transaction to link to this salary credit. Linking does not change how the transaction counts in your cash flow — it only connects it to this payslip record.",
+        "searchPlaceholder": "Search by note...",
+        "loading": "Loading transactions...",
+        "empty": "No matching income transactions found.",
+        "noNote": "(no note)",
+        "linkSuccess": "Transaction linked.",
+        "linkError": "Failed to link transaction. It may already be linked, or its currency may not match this source."
+      }
+    },
+    "sourceTypes": {
+      "salaried": "Salaried",
+      "freelance": "Freelance",
+      "contract": "Contract",
+      "rental": "Rental",
+      "business": "Business",
+      "other": "Other"
+    },
+    "payCadences": {
+      "monthly": "Monthly",
+      "semi_monthly": "Semi-monthly",
+      "biweekly": "Biweekly",
+      "weekly": "Weekly",
+      "quarterly": "Quarterly",
+      "annual": "Annual",
+      "irregular": "Irregular"
+    },
+    "creditTypes": {
+      "regular_salary": "Regular Salary",
+      "bonus": "Bonus",
+      "arrears": "Arrears",
+      "reimbursement": "Reimbursement",
+      "variable_pay": "Variable Pay",
+      "final_settlement": "Final Settlement",
+      "other": "Other"
+    },
+    "componentKinds": {
+      "earning": "Earning",
+      "deduction": "Deduction",
+      "employer_contribution": "Employer Contribution"
+    }
+  }
+}

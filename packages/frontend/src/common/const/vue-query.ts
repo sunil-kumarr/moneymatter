@@ -28,6 +28,10 @@ export const VUE_QUERY_GLOBAL_PREFIXES = Object.freeze({
   // other fixed-income-aware queries) need to refresh.
   fixedIncomeChange: 'global-query-fixed-income-change',
 
+  // When income sources/credits change, the income list/summary/timeseries
+  // queries need to refresh.
+  incomeChange: 'global-query-income-change',
+
   currencies: 'currencies',
 
   notifications: 'notifications',
@@ -39,6 +43,7 @@ const {
   bankConnectionChange,
   ventureChange,
   fixedIncomeChange,
+  incomeChange,
   notifications,
 } = VUE_QUERY_GLOBAL_PREFIXES;
 
@@ -308,4 +313,11 @@ export const VUE_QUERY_CACHE_KEYS = Object.freeze({
   fixedIncomePositionsList: [fixedIncomeChange, 'fixed-income-positions-list'] as const,
   fixedIncomePositionMetrics: [fixedIncomeChange, 'fixed-income-position-metrics'] as const,
   fixedIncomePositionEvents: [fixedIncomeChange, 'fixed-income-position-events'] as const,
+
+  // income sources — credit linking touches Transactions, so these also key off transactionChange
+  incomeSourcesList: [incomeChange, 'income-sources-list'] as const,
+  incomeSourceDetails: [incomeChange, 'income-source-details'] as const,
+  incomeSourceSummary: [incomeChange, transactionChange, 'income-source-summary'] as const,
+  incomeSourceTimeseries: [incomeChange, transactionChange, 'income-source-timeseries'] as const,
+  incomeCreditsList: [incomeChange, transactionChange, 'income-credits-list'] as const,
 });

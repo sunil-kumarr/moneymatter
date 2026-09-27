@@ -7,6 +7,7 @@ export * from './db-models';
 export * from './external-services';
 
 export * from './investments';
+export * from './income';
 export * from './venture';
 export * from './vehicles';
 export * from './loans';

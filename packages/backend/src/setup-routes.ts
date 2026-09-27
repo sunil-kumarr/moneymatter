@@ -33,6 +33,7 @@ import msMoneyImportRoutes from './routes/import-export/ms-money.route';
 import ofxImportRoutes from './routes/import-export/ofx.route';
 import statementParserRoutes from './routes/import-export/text-source.route';
 import ynabImportRoutes from './routes/import-export/ynab.route';
+import incomeRoutes from './routes/income.route';
 import investmentsRoutes from './routes/investments.route';
 import landingRoutes from './routes/landing.route';
 import loansRoutes from './routes/loans.route';
@@ -210,6 +211,7 @@ export function setupRoutes(app: Express) {
   app.use(`${API_PREFIX}/investments`, investmentsRoutes);
   app.use(`${API_PREFIX}/venture`, ventureRoutes);
   app.use(`${API_PREFIX}/fixed-income`, fixedIncomeRoutes);
+  app.use(`${API_PREFIX}/income`, incomeRoutes);
   app.use('/mcp', mcpRoutes);
   app.use(`${API_PREFIX}/import`, csvImportExportRoutes);
   app.use(`${API_PREFIX}/import`, statementParserRoutes);

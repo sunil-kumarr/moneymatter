@@ -312,6 +312,66 @@
         "asOfInFuture": "Дата не може бути в майбутньому"
       },
       "balanceExceedsPrincipalWarning": "Залишок боргу перевищує початкову суму боргу – перевірте ці суми ще раз."
+    },
+    "incomeSource": {
+      "nameLabel": "Назва місця роботи",
+      "namePlaceholder": "напр. Google — Senior Engineer",
+      "employerNameLabel": "Назва роботодавця",
+      "employerNamePlaceholder": "напр. Google",
+      "jobTitleLabel": "Посада",
+      "jobTitlePlaceholder": "напр. Senior Engineer",
+      "sourceTypeLabel": "Тип джерела доходу",
+      "payCadenceLabel": "Періодичність виплат",
+      "currencyLabel": "Валюта",
+      "startDateLabel": "Дата початку",
+      "expectedAnnualCtcLabel": "Очікуваний річний CTC (необов'язково)",
+      "expectedAnnualCtcPlaceholder": "напр. 1800000",
+      "payoutAccountLabel": "Рахунок зарахування",
+      "payoutAccountPlaceholder": "Необов'язково — рахунок, на який зазвичай надходить зарплата",
+      "taxRegimeLabel": "Податковий режим",
+      "taxRegimePlaceholder": "напр. Новий режим",
+      "employerIdentifierLabel": "Ідентифікатор роботодавця",
+      "employerIdentifierPlaceholder": "напр. податковий чи реєстраційний номер",
+      "notesLabel": "Примітки",
+      "notesPlaceholder": "Необов'язкові примітки",
+      "cancelButton": "Скасувати",
+      "submitButton": "Додати місце роботи",
+      "submitButtonLoading": "Додавання…",
+      "saveButton": "Зберегти зміни",
+      "errors": {
+        "required": "Це поле обов'язкове."
+      },
+      "notifications": {
+        "createSuccess": "Місце роботи додано.",
+        "createError": "Не вдалося додати місце роботи. Спробуйте ще раз.",
+        "updateSuccess": "Місце роботи оновлено",
+        "updateError": "Не вдалося оновити місце роботи"
+      }
+    },
+    "salaryCredit": {
+      "creditTypeLabel": "Тип надходження",
+      "creditDateLabel": "Дата надходження",
+      "componentsLabel": "Складові розрахункового листка",
+      "addComponent": "Додати рядок",
+      "componentNameLabel": "Складова",
+      "componentKindLabel": "Вид",
+      "componentAmountLabel": "Сума",
+      "noComponents": "Складових ще немає — додайте рядок для кожного нарахування чи утримання.",
+      "netPreview": "Чиста сума цього надходження",
+      "linkTransactionLabel": "Прив'язати транзакцію (необов'язково)",
+      "linkTransactionButton": "Прив'язати транзакцію",
+      "removeLinkedTransaction": "Видалити прив'язану транзакцію",
+      "notesLabel": "Примітки",
+      "cancelButton": "Скасувати",
+      "submitButton": "Додати надходження",
+      "submitButtonLoading": "Додавання…",
+      "saveButton": "Зберегти зміни",
+      "notifications": {
+        "createSuccess": "Надходження зарплати додано.",
+        "createError": "Не вдалося додати надходження зарплати. Спробуйте ще раз.",
+        "updateSuccess": "Надходження зарплати оновлено",
+        "updateError": "Не вдалося оновити надходження зарплати"
+      }
     }
   },
   "fields": {
