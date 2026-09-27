@@ -48,11 +48,11 @@ const onSaved = () => {
           <thead class="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             <tr>
               <th class="px-3 py-2 text-left">Name</th>
-              <th class="px-3 py-2 text-left">Type</th>
+              <th class="px-3 py-2 text-right">Rate</th>
               <th class="px-3 py-2 text-right">Principal</th>
               <th class="px-3 py-2 text-right">Interest</th>
               <th class="px-3 py-2 text-right">Current Value</th>
-              <th class="px-3 py-2 text-right">Rate</th>
+              <th class="px-3 py-2 text-right">Maturity Value</th>
               <th class="px-3 py-2 text-right"></th>
             </tr>
           </thead>

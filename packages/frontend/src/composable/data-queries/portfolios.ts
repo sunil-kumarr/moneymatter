@@ -130,3 +130,5 @@ export const usePermanentlyDeletePortfolio = () => {
     },
   });
 };
+
+export * from './portfolio-realized-pnl';

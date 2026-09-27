@@ -12,7 +12,11 @@ import {
 import { useFormatCurrency } from '@/composable/formatters';
 import { getApiErrorMessage } from '@/js/errors';
 import { captureException } from '@/lib/sentry';
-import type { FixedIncomePositionModel } from '@bt/shared/types/investments';
+import {
+  INTEREST_COMPOUNDING_FREQUENCY,
+  INTEREST_PAYOUT_FREQUENCY,
+  type FixedIncomePositionModel,
+} from '@bt/shared/types/investments';
 import { ListIcon, PencilIcon, Trash2Icon } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -59,12 +63,49 @@ const onSaved = () => {
   editOpen.value = false;
   emit('changed');
 };
+
+const formattedMaturityValue = computed(() => {
+  if (metrics.value?.maturityValue != null) {
+    return formatAmountByCurrencyCode(Number(metrics.value.maturityValue), props.position.currencyCode);
+  }
+  if (!metrics.value) return '—';
+  if (metrics.value.maturityValue === null) return '—';
+  if (!props.position.expectedEndDate) return '—';
+  if (props.position.interestPayoutFrequency !== INTEREST_PAYOUT_FREQUENCY.cumulative) {
+    return formatAmountByCurrencyCode(Number(props.position.principal), props.position.currencyCode);
+  }
+  const start = new Date(`${props.position.startDate}T00:00:00.000Z`);
+  const end = new Date(`${props.position.expectedEndDate}T00:00:00.000Z`);
+  const years = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365);
+  if (years <= 0) {
+    return formatAmountByCurrencyCode(Number(props.position.principal), props.position.currencyCode);
+  }
+  const principal = Number(props.position.principal);
+  const rate = Number(props.position.interestRatePct) / 100;
+  const comp = props.position.compoundingFrequency;
+  let amount = principal;
+  if (!comp || comp === INTEREST_COMPOUNDING_FREQUENCY.simple) {
+    amount = principal * (1 + rate * years);
+  } else {
+    const periodsMap: Record<string, number> = {
+      [INTEREST_COMPOUNDING_FREQUENCY.annually]: 1,
+      [INTEREST_COMPOUNDING_FREQUENCY.semi_annually]: 2,
+      [INTEREST_COMPOUNDING_FREQUENCY.quarterly]: 4,
+      [INTEREST_COMPOUNDING_FREQUENCY.monthly]: 12,
+    };
+    const n = periodsMap[comp] ?? 1;
+    amount = principal * Math.pow(1 + rate / n, n * years);
+  }
+  return formatAmountByCurrencyCode(amount, props.position.currencyCode);
+});
 </script>
 
 <template>
   <tr class="hover:bg-muted/30 text-sm transition-colors">
     <td class="px-3 py-2 font-medium">{{ position.name }}</td>
-    <td class="text-muted-foreground px-3 py-2 capitalize">{{ position.instrumentType.replace('_', ' ') }}</td>
+    <td class="text-muted-foreground px-3 py-2 text-right tabular-nums">
+      {{ Number(position.interestRatePct).toFixed(2) }}%
+    </td>
     <td class="px-3 py-2 text-right tabular-nums">
       {{ formatAmountByCurrencyCode(Number(position.principal), position.currencyCode) }}
     </td>
@@ -74,8 +115,8 @@ const onSaved = () => {
     <td class="px-3 py-2 text-right font-medium tabular-nums">
       {{ metrics ? formatAmountByCurrencyCode(Number(metrics.currentValue), position.currencyCode) : '—' }}
     </td>
-    <td class="text-muted-foreground px-3 py-2 text-right tabular-nums">
-      {{ Number(position.interestRatePct).toFixed(2) }}%
+    <td class="px-3 py-2 text-right tabular-nums">
+      {{ formattedMaturityValue }}
     </td>
     <td class="px-3 py-2 text-right">
       <div class="flex justify-end gap-1">

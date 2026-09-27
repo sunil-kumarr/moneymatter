@@ -1,5 +1,5 @@
 import { TRANSACTION_TRANSFER_NATURE, TRANSACTION_TYPES, RecordId } from '@bt/shared/types';
-import { INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types/investments';
+import { INVESTMENT_TRANSACTION_CATEGORY, INVESTMENT_TRADE_TYPE } from '@bt/shared/types/investments';
 import { IdColumn } from '@common/types/id-column';
 import { Money } from '@common/types/money';
 import { MoneyField } from '@common/types/money-column';
@@ -180,6 +180,23 @@ export default class InvestmentTransaction extends Model {
   // (hash, used to connect two transactions)
   @Column({ type: DataType.STRING, allowNull: true })
   transferId!: string | null;
+
+  /**
+   * Whether this trade was squared off same-day (intraday) or held (delivery).
+   * Null means unknown (legacy or non-Groww data) — gains calculations treat
+   * null the same as delivery. Sourced from broker records (e.g. Groww's PnL
+   * report), never inferred from timestamps alone, since brokers track this as
+   * a separate bucket at order-entry time.
+   */
+  @Column({
+    type: DataType.STRING(20),
+    allowNull: true,
+  })
+  tradeType!: INVESTMENT_TRADE_TYPE | null;
+
+  /** The broker's own order id for this leg, used as a natural dedup/reconciliation key. */
+  @Column({ type: DataType.STRING, allowNull: true })
+  exchangeOrderId!: string | null;
 
   @Column({ type: DataType.DATE, allowNull: false })
   declare createdAt: Date;

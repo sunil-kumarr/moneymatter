@@ -58,6 +58,7 @@
       <!-- Main Content -->
       <div v-if="portfolio" class="grid gap-6">
         <PortfolioBalance :portfolio-id="portfolioId" />
+        <PortfolioRealizedPnlChart v-if="hasStocks" :portfolio-id="portfolioId" />
         <HoldingsSummary :portfolio-id="portfolioId" />
         <FixedIncomeSummary :portfolio-id="portfolioId" />
         <PortfolioCashBalances :portfolio-id="portfolioId" :portfolio="portfolio" />
@@ -91,9 +92,11 @@ import ResourceNotFound from '@/components/common/resource-not-found.vue';
 import DeletePortfolioDialog from '@/components/dialogs/delete-portfolio-dialog.vue';
 import EditPortfolioDialog from '@/components/dialogs/edit-portfolio-dialog.vue';
 import UiButton from '@/components/lib/ui/button/Button.vue';
+import { useHoldings } from '@/composable/data-queries/holdings';
 import { usePortfolio } from '@/composable/data-queries/portfolios';
 import { isResourceMissingError } from '@/js/errors';
 import { ROUTES_NAMES } from '@/routes/constants';
+import { ASSET_CLASS } from '@bt/shared/types/investments';
 import { AlertCircleIcon, BriefcaseIcon, ChevronLeftIcon, PencilIcon, Trash2Icon } from '@lucide/vue';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -102,12 +105,19 @@ import FixedIncomeSummary from './components/fixed-income-summary.vue';
 import HoldingsSummary from './components/holdings-summary.vue';
 import PortfolioBalance from './components/portfolio-balance.vue';
 import PortfolioCashBalances from './components/portfolio-cash-balances.vue';
+import PortfolioRealizedPnlChart from './components/portfolio-realized-pnl-chart.vue';
 
 const route = useRoute();
 const router = useRouter();
 const portfolioId = computed(() => String(route.params.portfolioId));
 
 const { data: portfolio, isLoading, isError, error, refetch } = usePortfolio(portfolioId, { retry: false });
+const { data: holdings } = useHoldings(portfolioId);
+
+const hasStocks = computed(() => {
+  if (!holdings.value) return false;
+  return holdings.value.some((h) => !h.security?.assetClass || h.security.assetClass === ASSET_CLASS.stocks);
+});
 
 const isNotFound = computed(() => isError.value && isResourceMissingError(error.value));
 

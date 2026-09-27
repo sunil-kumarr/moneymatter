@@ -1,4 +1,8 @@
-import { INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types/investments/enums';
+import {
+  COST_BASIS_METHOD,
+  INVESTMENT_TRADE_TYPE,
+  INVESTMENT_TRANSACTION_CATEGORY,
+} from '@bt/shared/types/investments/enums';
 import { describe, expect, it } from '@jest/globals';
 
 import {
@@ -125,7 +129,7 @@ describe('Gains Calculator Utils', () => {
       expect(result.totalProceedsFromSoldShares).toBeCloseTo(1490, 2);
     });
 
-    it('should handle FIFO (First In, First Out) correctly', () => {
+    it('should handle FIFO (First In, First Out) correctly for FIFO-method securities (mutual funds)', () => {
       const transactions: TransactionForGains[] = [
         {
           date: '2023-01-01',
@@ -150,7 +154,7 @@ describe('Gains Calculator Utils', () => {
         },
       ];
 
-      const result = calculateRealizedGains(transactions);
+      const result = calculateRealizedGains(transactions, COST_BASIS_METHOD.fifo);
 
       // Sell 50 shares from first lot (bought at $10)
       // Gain: (50 * $20) - (50 * $10) = $1,000 - $500 = $500
@@ -159,7 +163,7 @@ describe('Gains Calculator Utils', () => {
       expect(result.realizedGainPercent).toBeCloseTo(100, 2);
     });
 
-    it('should handle partial sales across multiple lots', () => {
+    it('should handle partial sales across multiple lots (FIFO method)', () => {
       const transactions: TransactionForGains[] = [
         {
           date: '2023-01-01',
@@ -184,7 +188,7 @@ describe('Gains Calculator Utils', () => {
         },
       ];
 
-      const result = calculateRealizedGains(transactions);
+      const result = calculateRealizedGains(transactions, COST_BASIS_METHOD.fifo);
 
       // Sell 100 shares from first lot at $10 + 50 shares from second lot at $15
       // First lot gain: (100 * $20) - (100 * $10) = $1,000
@@ -196,7 +200,42 @@ describe('Gains Calculator Utils', () => {
       expect(result.realizedGainPercent).toBeCloseTo(71.43, 2);
     });
 
-    it('should handle multiple buy and sell transactions', () => {
+    it('should default to weighted-average for multi-lot partial sales when no method is given (stocks/crypto)', () => {
+      const transactions: TransactionForGains[] = [
+        {
+          date: '2023-01-01',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 100,
+          price: 10,
+          fees: 0,
+        },
+        {
+          date: '2023-02-01',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 100,
+          price: 15,
+          fees: 0,
+        },
+        {
+          date: '2023-06-01',
+          category: INVESTMENT_TRANSACTION_CATEGORY.sell,
+          quantity: 150,
+          price: 20,
+          fees: 0,
+        },
+      ];
+
+      const result = calculateRealizedGains(transactions);
+
+      // Weighted-average cost: (100*10 + 100*15) / 200 = $12.5/share
+      // Cost of 150 sold shares: 150 * 12.5 = $1,875
+      // Proceeds: 150 * 20 = $3,000
+      // Gain: $3,000 - $1,875 = $1,125; Percentage: 1125/1875*100 = 60%
+      expect(result.realizedGainValue).toBeCloseTo(1125, 2);
+      expect(result.realizedGainPercent).toBeCloseTo(60, 2);
+    });
+
+    it('should handle multiple buy and sell transactions (FIFO method)', () => {
       const transactions: TransactionForGains[] = [
         {
           date: '2023-01-01',
@@ -228,7 +267,7 @@ describe('Gains Calculator Utils', () => {
         },
       ];
 
-      const result = calculateRealizedGains(transactions);
+      const result = calculateRealizedGains(transactions, COST_BASIS_METHOD.fifo);
 
       // First sell: 50 shares at $12, cost basis $10 = (50 * $12) - (50 * $10) = $100 gain
       // Second sell: 25 shares at $15, cost basis $10 (from remaining first lot) = (25 * $15) - (25 * $10) = $125 gain
@@ -237,6 +276,97 @@ describe('Gains Calculator Utils', () => {
       // Percentage: ($225 / $750) * 100 = 30%
       expect(result.realizedGainValue).toBeCloseTo(225, 2);
       expect(result.realizedGainPercent).toBeCloseTo(30, 2);
+    });
+
+    it('should not let a same-day intraday round trip match against an older delivery lot (the core regression)', () => {
+      const transactions: TransactionForGains[] = [
+        // Old delivery lot bought cheap, still held.
+        {
+          date: '2023-01-01',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 100,
+          price: 10,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.delivery,
+        },
+        // Same-day intraday round trip at a much higher price, months later.
+        {
+          date: '2023-06-01T09:20:00Z',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 20,
+          price: 100,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.intraday,
+        },
+        {
+          date: '2023-06-01T15:20:00Z',
+          category: INVESTMENT_TRANSACTION_CATEGORY.sell,
+          quantity: 20,
+          price: 102,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.intraday,
+        },
+      ];
+
+      const result = calculateRealizedGains(transactions);
+
+      // Intraday leg must match against its own same-day buy (20 * (102-100) = $40),
+      // never against the $10 delivery lot (which would inflate this to ~$1,840).
+      expect(result.realizedGainValue).toBeCloseTo(40, 2);
+      expect(result.totalCostBasisOfSoldShares).toBeCloseTo(2000, 2); // 20 * $100, not 20 * $10
+      // The delivery lot itself was never sold, so it contributes nothing here.
+    });
+
+    it('should sum multiple same-day intraday round trips independently of delivery holdings', () => {
+      const transactions: TransactionForGains[] = [
+        {
+          date: '2023-01-01',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 50,
+          price: 200,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.delivery,
+        },
+        {
+          date: '2023-06-01T09:20:00Z',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 1000,
+          price: 16,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.intraday,
+        },
+        {
+          date: '2023-06-01T09:45:00Z',
+          category: INVESTMENT_TRANSACTION_CATEGORY.sell,
+          quantity: 1000,
+          price: 16.5,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.intraday,
+        },
+        {
+          date: '2023-06-01T10:00:00Z',
+          category: INVESTMENT_TRANSACTION_CATEGORY.buy,
+          quantity: 500,
+          price: 16.4,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.intraday,
+        },
+        {
+          date: '2023-06-01T10:15:00Z',
+          category: INVESTMENT_TRANSACTION_CATEGORY.sell,
+          quantity: 500,
+          price: 16.3,
+          fees: 0,
+          tradeType: INVESTMENT_TRADE_TYPE.intraday,
+        },
+      ];
+
+      const result = calculateRealizedGains(transactions);
+
+      // Round trip 1: 1000 * (16.5 - 16) = $500
+      // Round trip 2: 500 * (16.3 - 16.4) = -$50
+      // Total: $450, and the untouched delivery lot contributes nothing.
+      expect(result.realizedGainValue).toBeCloseTo(450, 2);
     });
 
     it('should handle transactions with string values', () => {

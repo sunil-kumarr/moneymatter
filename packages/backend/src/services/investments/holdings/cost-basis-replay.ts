@@ -44,6 +44,19 @@ export interface CostBasisState {
   refCostBasis: Big;
   /** Only populated/consumed when `method === 'fifo'`. Empty and unused otherwise. */
   fifoLots: FifoLot[];
+  /**
+   * Running realized gain: sum over every SELL leg of (proceeds − cost of the
+   * shares that leg actually depleted), using the same cost-per-unit the leg
+   * used to reduce `costBasis`/`fifoLots` above. Selling more than currently
+   * held (phantom shares — bonus/split issues with no corresponding buy order)
+   * costs nothing for the unmatched portion, so it books as pure gain; this is
+   * intentional, not a bug — see class-level docs.
+   */
+  realizedGain: Big;
+  refRealizedGain: Big;
+  /** Running total of the cost basis actually consumed by every SELL leg so far (i.e. the denominator for a realized-gain %). */
+  realizedCostBasis: Big;
+  refRealizedCostBasis: Big;
 }
 
 export const createInitialCostBasisState = (): CostBasisState => ({
@@ -51,6 +64,10 @@ export const createInitialCostBasisState = (): CostBasisState => ({
   costBasis: new Big(0),
   refCostBasis: new Big(0),
   fifoLots: [],
+  realizedGain: new Big(0),
+  refRealizedGain: new Big(0),
+  realizedCostBasis: new Big(0),
+  refRealizedCostBasis: new Big(0),
 });
 
 const applyWeightedAverageLeg = ({ state, leg }: { state: CostBasisState; leg: CostBasisLeg }): void => {
@@ -74,18 +91,30 @@ const applyWeightedAverageLeg = ({ state, leg }: { state: CostBasisState; leg: C
   }
 
   if (category === INVESTMENT_TRANSACTION_CATEGORY.sell) {
+    let costConsumed = new Big(0);
+    let refCostConsumed = new Big(0);
     if (state.quantity.gt(0)) {
       const newQuantity = state.quantity.minus(quantity);
       if (newQuantity.lte(0)) {
+        costConsumed = state.costBasis;
+        refCostConsumed = state.refCostBasis;
         state.costBasis = new Big(0);
         state.refCostBasis = new Big(0);
       } else {
         const remainingProportion = newQuantity.div(state.quantity);
-        state.costBasis = state.costBasis.times(remainingProportion);
-        state.refCostBasis = state.refCostBasis.times(remainingProportion);
+        const newCostBasis = state.costBasis.times(remainingProportion);
+        const newRefCostBasis = state.refCostBasis.times(remainingProportion);
+        costConsumed = state.costBasis.minus(newCostBasis);
+        refCostConsumed = state.refCostBasis.minus(newRefCostBasis);
+        state.costBasis = newCostBasis;
+        state.refCostBasis = newRefCostBasis;
       }
     }
     state.quantity = state.quantity.minus(quantity);
+    state.realizedGain = state.realizedGain.plus(amount.minus(costConsumed));
+    state.refRealizedGain = state.refRealizedGain.plus(refAmount.minus(refCostConsumed));
+    state.realizedCostBasis = state.realizedCostBasis.plus(costConsumed);
+    state.refRealizedCostBasis = state.refRealizedCostBasis.plus(refCostConsumed);
   }
 };
 
@@ -130,6 +159,8 @@ const applyFifoLeg = ({ state, leg }: { state: CostBasisState; leg: CostBasisLeg
   }
 
   if (category === INVESTMENT_TRANSACTION_CATEGORY.sell) {
+    let costConsumed = new Big(0);
+    let refCostConsumed = new Big(0);
     if (state.quantity.gt(0)) {
       let remainingToSell = quantity;
       const remainingLots: FifoLot[] = [];
@@ -139,9 +170,13 @@ const applyFifoLeg = ({ state, leg }: { state: CostBasisState; leg: CostBasisLeg
           continue;
         }
         if (lot.quantity.lte(remainingToSell)) {
+          costConsumed = costConsumed.plus(lot.quantity.times(lot.costPerUnit));
+          refCostConsumed = refCostConsumed.plus(lot.quantity.times(lot.refCostPerUnit));
           remainingToSell = remainingToSell.minus(lot.quantity);
           continue;
         }
+        costConsumed = costConsumed.plus(remainingToSell.times(lot.costPerUnit));
+        refCostConsumed = refCostConsumed.plus(remainingToSell.times(lot.refCostPerUnit));
         remainingLots.push({ ...lot, quantity: lot.quantity.minus(remainingToSell) });
         remainingToSell = new Big(0);
       }
@@ -149,8 +184,15 @@ const applyFifoLeg = ({ state, leg }: { state: CostBasisState; leg: CostBasisLeg
     }
     // Selling from a zero/short position leaves the lots (and basis) untouched,
     // matching weighted-average's "no long position to reduce" behaviour.
+    // Selling more than the available lots cover (phantom shares — see
+    // `CostBasisState.realizedGain` docs) leaves the unmatched portion at zero
+    // cost, so it books as pure gain below.
     state.quantity = state.quantity.minus(quantity);
     recomputeFifoTotals(state);
+    state.realizedGain = state.realizedGain.plus(amount.minus(costConsumed));
+    state.refRealizedGain = state.refRealizedGain.plus(refAmount.minus(refCostConsumed));
+    state.realizedCostBasis = state.realizedCostBasis.plus(costConsumed);
+    state.refRealizedCostBasis = state.refRealizedCostBasis.plus(refCostConsumed);
   }
 };
 
@@ -184,7 +226,15 @@ export const replayCostBasis = ({
 }: {
   legs: CostBasisLeg[];
   method: COST_BASIS_METHOD;
-}): { quantity: Big; costBasis: Big; refCostBasis: Big } => {
+}): {
+  quantity: Big;
+  costBasis: Big;
+  refCostBasis: Big;
+  realizedGain: Big;
+  refRealizedGain: Big;
+  realizedCostBasis: Big;
+  refRealizedCostBasis: Big;
+} => {
   const state = createInitialCostBasisState();
   for (const leg of legs) {
     applyCostBasisLeg({ state, leg, method });
@@ -193,5 +243,9 @@ export const replayCostBasis = ({
     quantity: state.quantity,
     costBasis: state.costBasis.lt(0) ? new Big(0) : state.costBasis,
     refCostBasis: state.refCostBasis.lt(0) ? new Big(0) : state.refCostBasis,
+    realizedGain: state.realizedGain,
+    refRealizedGain: state.refRealizedGain,
+    realizedCostBasis: state.realizedCostBasis,
+    refRealizedCostBasis: state.refRealizedCostBasis,
   };
 };

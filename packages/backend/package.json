@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "knip": "npx knip",
     "backfill:payee-logos": "cross-env NODE_ENV=production ts-node -r tsconfig-paths/register src/scripts/backfill-payee-logos.ts",
+    "backfill:groww-trade-type": "cross-env NODE_ENV=development ts-node -r tsconfig-paths/register src/scripts/backfill-groww-trade-type.ts",
     "fixtures:ms-money": "ts-node -T scripts/fetch-ms-money-fixtures.ts"
   },
   "dependencies": {

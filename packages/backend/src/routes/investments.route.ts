@@ -17,6 +17,7 @@ import directCashTransactionController from '@controllers/investments/portfolios
 import exchangeCurrencyController from '@controllers/investments/portfolios/exchange-currency';
 import getPortfolioController from '@controllers/investments/portfolios/get-portfolio';
 import getPortfolioBalanceController from '@controllers/investments/portfolios/get-portfolio-balance';
+import getPortfolioRealizedPnlController from '@controllers/investments/portfolios/get-portfolio-realized-pnl.controller';
 import getPortfolioSummaryController from '@controllers/investments/portfolios/get-portfolio-summary.controller';
 import getPortfolioValueHistoryController from '@controllers/investments/portfolios/get-portfolio-value-history.controller';
 import getPortfoliosAnnualizedReturnsController from '@controllers/investments/portfolios/get-portfolios-annualized-returns.controller';
@@ -82,6 +83,12 @@ router.get(
   '/portfolios/:id/summary',
   validateEndpoint(getPortfolioSummaryController.schema),
   getPortfolioSummaryController.handler,
+);
+
+router.get(
+  '/portfolios/:id/realized-pnl',
+  validateEndpoint(getPortfolioRealizedPnlController.schema),
+  getPortfolioRealizedPnlController.handler,
 );
 
 // Test-only cash seeding: writes `PortfolioBalances` directly, bypassing the

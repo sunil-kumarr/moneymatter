@@ -25,6 +25,15 @@
         "totalReturn": "Total Return"
       }
     },
+    "realizedPnlChart": {
+      "title": "Realised P&L",
+      "charges": "Charges",
+      "chargesHint": "Total charges, fees, taxes and levies paid during this period",
+      "netPnl": "Net P&L",
+      "trades": "Trades",
+      "selectFy": "Select FY",
+      "loadError": "Failed to load realised P&L data."
+    },
     "cashBalances": {
       "title": "Cash Balances",
       "emptyState": "No cash balances",

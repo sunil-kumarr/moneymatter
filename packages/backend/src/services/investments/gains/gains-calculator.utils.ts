@@ -1,4 +1,11 @@
-import { INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types/investments/enums';
+import {
+  COST_BASIS_METHOD,
+  INVESTMENT_TRADE_TYPE,
+  INVESTMENT_TRANSACTION_CATEGORY,
+} from '@bt/shared/types/investments';
+import Big from 'big.js';
+
+import { replayCostBasis, type CostBasisLeg } from '../holdings/cost-basis-replay';
 
 export interface TransactionForGains {
   date: string | Date;
@@ -6,6 +13,13 @@ export interface TransactionForGains {
   quantity: string | number;
   price: string | number;
   fees?: string | number;
+  /**
+   * Whether this leg was an intraday (same-day) square-off or a delivery
+   * trade. Sourced from broker data, never inferred from timestamps alone.
+   * `undefined`/null legs are treated as delivery, matching legacy behavior
+   * for accounts without this data.
+   */
+  tradeType?: INVESTMENT_TRADE_TYPE | null;
 }
 
 interface UnrealizedGainsResult {
@@ -18,6 +32,14 @@ export interface RealizedGainsResult {
   realizedGainPercent: number;
   totalCostBasisOfSoldShares: number;
   totalProceedsFromSoldShares: number;
+}
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+/** IST calendar-day key (YYYY-MM-DD), since Indian same-day/intraday square-off is defined by the IST trading day, not raw UTC. */
+function getIstDateKey(date: string | Date): string {
+  const istMs = new Date(date).getTime() + IST_OFFSET_MS;
+  return new Date(istMs).toISOString().slice(0, 10);
 }
 
 /**
@@ -37,89 +59,107 @@ export function calculateUnrealizedGains(marketValue: number, costBasis: number)
 }
 
 /**
- * Calculate realized gains/losses using FIFO (First In, First Out) method
- * @param transactions Array of buy/sell transactions sorted by date
- * @returns Realized gains in dollars and total cost basis for percentage calculation
+ * Nets a single IST day's intraday legs directly (sum of sell proceeds minus
+ * sum of buy cost), rather than FIFO-matching individual legs against each
+ * other.
+ *
+ * Every intraday-tagged buy leg has an equal-quantity intraday-tagged sell
+ * leg from the same broker-reported lot (see the backfill script), so a
+ * day's intraday legs always net to zero quantity — a closed system whose
+ * total gain is the plain proceeds-minus-cost sum, independent of match
+ * order. FIFO-matching by timestamp broke on real Groww data: intraday
+ * square-offs can be sell-first-then-buy-to-cover (a same-day short), so a
+ * sell can appear before any buy is queued. That drove the sell into the
+ * "no matching buy" branch, which books it as 100% profit — silently
+ * inflating gains despite the position squaring off exactly. Netting the
+ * whole day sidesteps ordering entirely.
  */
-export function calculateRealizedGains(transactions: TransactionForGains[]): RealizedGainsResult {
-  // Sort transactions by date to ensure FIFO
-  const sortedTransactions = transactions.toSorted((a, b) => {
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    return dateA - dateB;
-  });
+function calculateIntradayGainForDay(dayTransactions: TransactionForGains[]): { gain: number; costBasis: number } {
+  let buyCost = 0;
+  let sellProceeds = 0;
 
-  let totalRealizedGain = 0;
-  let totalCostBasisOfSoldShares = 0;
-
-  // FIFO queue: array of {quantity, price, fees} for purchased shares
-  const buyQueue: Array<{ quantity: number; price: number; fees: number }> = [];
-
-  for (const transaction of sortedTransactions) {
+  for (const transaction of dayTransactions) {
     const quantity = Number(transaction.quantity);
     const price = Number(transaction.price);
     const fees = Number(transaction.fees || 0);
+    const amount = quantity * price;
 
     if (transaction.category === INVESTMENT_TRANSACTION_CATEGORY.buy) {
-      // Add to FIFO queue with fees distributed per share
-      const feesPerShare = quantity > 0 ? fees / quantity : 0;
-      buyQueue.push({
-        quantity,
-        price: price + feesPerShare, // Include fees in cost basis
-        fees: 0, // Already distributed to price
-      });
+      buyCost += amount + fees;
     } else if (transaction.category === INVESTMENT_TRANSACTION_CATEGORY.sell) {
-      let remainingToSell = quantity;
-
-      while (remainingToSell > 0 && buyQueue.length > 0) {
-        const oldest = buyQueue[0];
-        if (!oldest) break; // Safety check
-
-        const sellQuantity = Math.min(remainingToSell, oldest.quantity);
-
-        // Calculate gain/loss for this portion of the sale
-        const costBasisForSoldShares = sellQuantity * oldest.price;
-        const grossProceeds = sellQuantity * price;
-        const feesForThisPortion = (sellQuantity / quantity) * fees; // Proportional fees
-        const netProceeds = grossProceeds - feesForThisPortion;
-
-        const gainLoss = netProceeds - costBasisForSoldShares;
-        totalRealizedGain += gainLoss;
-        totalCostBasisOfSoldShares += costBasisForSoldShares;
-
-        // Update the buy queue
-        oldest.quantity -= sellQuantity;
-        remainingToSell -= sellQuantity;
-
-        // Remove completely sold lots from queue
-        if (oldest.quantity <= 0) {
-          buyQueue.shift();
-        }
-      }
-
-      // Handle phantom shares (selling more than owned) by treating them as zero cost basis
-      if (remainingToSell > 0) {
-        const phantomSharesGrossProceeds = remainingToSell * price;
-        const phantomSharesFees = (remainingToSell / quantity) * fees; // Proportional fees
-        const phantomSharesNetProceeds = phantomSharesGrossProceeds - phantomSharesFees;
-
-        // Phantom shares have zero cost basis, so entire net proceeds is gain
-        totalRealizedGain += phantomSharesNetProceeds;
-        // No cost basis to add for phantom shares (they cost nothing)
-      }
+      sellProceeds += amount - fees;
     }
   }
 
-  // Calculate percentage more intelligently:
-  // - If we have real shares (cost basis > 0): use traditional calculation
-  // - If pure phantom shares (no cost basis): treat as 100% gain since it's pure profit
-  let realizedGainPercent = 0;
+  return { gain: sellProceeds - buyCost, costBasis: buyCost };
+}
 
+/**
+ * Calculate realized gains/losses for a security's full transaction history.
+ *
+ * Intraday round-trips (same IST day, `tradeType === intraday`) are matched
+ * FIFO among themselves only, since they never touch the holding's actual
+ * cost basis. Everything else (delivery trades, and legacy/non-Groww
+ * transactions with no `tradeType`) is replayed through the holding's real
+ * cost-basis method (`cost-basis-replay.ts` — weighted-average or FIFO),
+ * the same fold `Holdings.costBasis` is built from, so realized and
+ * unrealized gains can never diverge from each other or from the stored
+ * holding.
+ *
+ * @param transactions Array of buy/sell transactions for one security
+ * @param method The security's cost-basis method (weighted-average for
+ *   stocks/crypto, FIFO for mutual funds — see `COST_BASIS_METHOD`)
+ */
+export function calculateRealizedGains(
+  transactions: TransactionForGains[],
+  method: COST_BASIS_METHOD = COST_BASIS_METHOD.weighted_average,
+): RealizedGainsResult {
+  const sortedTransactions = transactions.toSorted((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const intradayLegsByDay = new Map<string, TransactionForGains[]>();
+  const deliveryLegs: TransactionForGains[] = [];
+
+  for (const transaction of sortedTransactions) {
+    if (transaction.tradeType === INVESTMENT_TRADE_TYPE.intraday) {
+      const dayKey = getIstDateKey(transaction.date);
+      const dayLegs = intradayLegsByDay.get(dayKey) ?? [];
+      dayLegs.push(transaction);
+      intradayLegsByDay.set(dayKey, dayLegs);
+    } else {
+      deliveryLegs.push(transaction);
+    }
+  }
+
+  let intradayGain = 0;
+  let intradayCostBasis = 0;
+  for (const dayLegs of intradayLegsByDay.values()) {
+    const dayResult = calculateIntradayGainForDay(dayLegs);
+    intradayGain += dayResult.gain;
+    intradayCostBasis += dayResult.costBasis;
+  }
+
+  const deliveryCostBasisLegs: CostBasisLeg[] = deliveryLegs.map((transaction) => {
+    const quantity = new Big(String(transaction.quantity));
+    const price = new Big(String(transaction.price));
+    const fees = new Big(String(transaction.fees ?? 0));
+    const amount = quantity.times(price).plus(fees);
+    return { category: transaction.category, quantity, amount, refAmount: amount };
+  });
+
+  const deliveryReplay = replayCostBasis({ legs: deliveryCostBasisLegs, method });
+  const deliveryGain = deliveryReplay.realizedGain.toNumber();
+  const deliveryCostBasis = deliveryReplay.realizedCostBasis.toNumber();
+
+  const totalRealizedGain = intradayGain + deliveryGain;
+  const totalCostBasisOfSoldShares = intradayCostBasis + deliveryCostBasis;
+
+  // - Real cost basis present: standard percentage.
+  // - Pure phantom shares (zero cost basis, positive gain): 100% gain, since
+  //   it's pure profit with no investment — see `CostBasisState.realizedGain`.
+  let realizedGainPercent = 0;
   if (totalCostBasisOfSoldShares > 0) {
-    // Traditional calculation when there's actual investment
     realizedGainPercent = (totalRealizedGain / totalCostBasisOfSoldShares) * 100;
   } else if (totalRealizedGain > 0) {
-    // Pure phantom shares scenario - treat as 100% gain (pure profit with no investment)
     realizedGainPercent = 100;
   }
 
@@ -136,11 +176,17 @@ export function calculateRealizedGains(transactions: TransactionForGains[]): Rea
  * @param marketValue Current market value
  * @param costBasis Total cost basis
  * @param transactions All transactions for this holding
+ * @param method The security's cost-basis method
  * @returns Combined unrealized and realized gains
  */
-export function calculateAllGains(marketValue: number, costBasis: number, transactions: TransactionForGains[]) {
+export function calculateAllGains(
+  marketValue: number,
+  costBasis: number,
+  transactions: TransactionForGains[],
+  method: COST_BASIS_METHOD = COST_BASIS_METHOD.weighted_average,
+) {
   const unrealizedGains = calculateUnrealizedGains(marketValue, costBasis);
-  const realizedGains = calculateRealizedGains(transactions);
+  const realizedGains = calculateRealizedGains(transactions, method);
 
   return {
     ...unrealizedGains,

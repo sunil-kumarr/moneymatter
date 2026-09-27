@@ -1,4 +1,9 @@
-import { FIXED_INCOME_POSITION_STATUS, FixedIncomePositionMetricsModel } from '@bt/shared/types/investments';
+import {
+  FIXED_INCOME_EVENT_TYPE,
+  FIXED_INCOME_POSITION_STATUS,
+  FixedIncomePositionMetricsModel,
+  INTEREST_PAYOUT_FREQUENCY,
+} from '@bt/shared/types/investments';
 import { findOrThrowNotFound } from '@common/utils/find-or-throw-not-found';
 import FixedIncomeEvents from '@models/investments/fixed-income-events.model';
 import FixedIncomePositions from '@models/investments/fixed-income-positions.model';
@@ -78,6 +83,38 @@ export async function getFixedIncomePositionMetrics({
     status: position.status,
   });
 
+  let maturityValue: string | null = null;
+  const maturityEvent = events.find((e) => e.type === FIXED_INCOME_EVENT_TYPE.maturity);
+
+  if (maturityEvent) {
+    maturityValue =
+      maturityEvent.grossAmount?.toDecimalString(10) ??
+      new Big(maturityEvent.principalComponent?.toDecimalString(10) ?? '0')
+        .plus(maturityEvent.interestComponent?.toDecimalString(10) ?? '0')
+        .toFixed(10);
+  } else if (position.status === FIXED_INCOME_POSITION_STATUS.written_off) {
+    maturityValue = '0';
+  } else if (position.status === FIXED_INCOME_POSITION_STATUS.fully_repaid) {
+    maturityValue = principalReturnedToDate;
+  } else if (position.expectedEndDate) {
+    if (position.interestPayoutFrequency === INTEREST_PAYOUT_FREQUENCY.cumulative) {
+      const maturityAccrual = computeAccruedInterest({
+        principal: position.principal.toDecimalString(10),
+        interestRatePct: position.interestRatePct,
+        compoundingFrequency: position.compoundingFrequency,
+        dayCountConvention: position.dayCountConvention,
+        startDate: position.startDate,
+        events,
+        asOfDate: new Date(`${position.expectedEndDate}T00:00:00.000Z`),
+      });
+      maturityValue = new Big(maturityAccrual.principalOutstanding)
+        .plus(maturityAccrual.accruedUnpaidInterest)
+        .toFixed(10);
+    } else {
+      maturityValue = new Big(principalOutstanding).toFixed(10);
+    }
+  }
+
   return {
     costBasis,
     principalOutstanding,
@@ -92,5 +129,6 @@ export async function getFixedIncomePositionMetrics({
     realizedGainPct,
     unrealizedGainPct,
     nextPayoutDate,
+    maturityValue,
   };
 }

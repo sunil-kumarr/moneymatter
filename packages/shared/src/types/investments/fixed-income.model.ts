@@ -184,4 +184,6 @@ export interface FixedIncomePositionMetricsModel {
   // Next projected interest payout date, or null when the payout frequency is
   // cumulative (interest reinvested, nothing paid until maturity) or the position is closed.
   nextPayoutDate: string | null;
+  // Projected or actual maturity value, or null if expectedEndDate is not set and position has not matured.
+  maturityValue: string | null;
 }

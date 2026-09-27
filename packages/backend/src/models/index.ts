@@ -22,6 +22,7 @@ import FixedIncomeEventLinksModel from './investments/fixed-income-event-links.m
 import FixedIncomeEventsModel from './investments/fixed-income-events.model';
 import FixedIncomePositionsModel from './investments/fixed-income-positions.model';
 import HoldingsModel from './investments/holdings.model';
+import InvestmentTransactionReconciliationModel from './investments/investment-transaction-reconciliations.model';
 import InvestmentTransactionModel from './investments/investment-transaction.model';
 import PortfolioBalancesModel from './investments/portfolio-balances.model';
 import PortfolioTransfersModel from './investments/portfolio-transfers.model';
@@ -122,6 +123,7 @@ const models = [
   TransactionTemplateTagsModel,
   HoldingsModel,
   InvestmentTransactionModel,
+  InvestmentTransactionReconciliationModel,
   SecuritiesModel,
   SecurityCurrencyCacheModel,
   SecurityPricingModel,

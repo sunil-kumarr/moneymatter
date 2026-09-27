@@ -215,6 +215,14 @@ export async function executeInvestmentImport({
           fees: tx.fees,
           name: '',
           preloadedHolding: preloadedHoldingRef ?? undefined,
+          // `preloadedHoldingRef` is loaded once per security and reused for
+          // every row below — its quantity never reflects buys this same
+          // loop already inserted, and a real intraday short sell (sell
+          // recorded before that day's covering buy) is legitimate broker
+          // history, not user error. See `skipOversellCheck` on
+          // `createInvestmentTransaction` for how the replay still lands on
+          // the correct final quantity.
+          skipOversellCheck: true,
         });
         createdTransactions += 1;
       } catch (error) {

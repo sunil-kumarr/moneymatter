@@ -15,7 +15,7 @@ export function registerGetFixedIncomePositionMetrics(server: McpServer) {
     'get_fixed_income_position_metrics',
     {
       description:
-        'Computed metrics for a single fixed-income position: cost basis, principal outstanding, accrued unpaid interest, current value, total interest received, total repaid, realized/unrealized gain (value and percent), and the projected nextPayoutDate. nextPayoutDate is a projection from the payout frequency and the last accrual reset — the actual date of a recorded interest_accrual_payout event can differ (e.g. issuer pays a few days late) and always wins once recorded via create_fixed_income_event.',
+        'Computed metrics for a single fixed-income position: cost basis, principal outstanding, accrued unpaid interest, current value, total interest received, total repaid, realized/unrealized gain (value and percent), projected nextPayoutDate, and maturityValue. nextPayoutDate is a projection from the payout frequency and the last accrual reset — the actual date of a recorded interest_accrual_payout event can differ (e.g. issuer pays a few days late) and always wins once recorded via create_fixed_income_event.',
       inputSchema,
     },
     async (args, extra) => {

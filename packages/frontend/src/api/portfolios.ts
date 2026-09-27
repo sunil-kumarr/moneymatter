@@ -7,6 +7,7 @@ import {
   PortfolioTransferModel,
 } from '@bt/shared/types/investments';
 import type { PortfolioAnnualizedReturnModel } from '@bt/shared/types/investments/portfolio-annualized-return.model';
+import type { PortfolioRealizedPnlResponse } from '@bt/shared/types/investments/portfolio-realized-pnl.model';
 import type { PortfolioSummaryModel } from '@bt/shared/types/investments/portfolio-summary.model';
 import type { PortfolioValueHistoryItem } from '@bt/shared/types/investments/portfolio-value-history.model';
 
@@ -275,5 +276,30 @@ export const getPortfoliosValueHistory = async ({
   if (from) params.from = from;
   if (to) params.to = to;
   const result = await api.get('/investments/portfolios/value-history', params);
+  return result;
+};
+
+export interface GetPortfolioRealizedPnlParams {
+  portfolioId: string;
+  from?: string;
+  to?: string;
+  period?: string;
+  financialYear?: string;
+}
+
+export const getPortfolioRealizedPnl = async ({
+  portfolioId,
+  from,
+  to,
+  period,
+  financialYear,
+}: GetPortfolioRealizedPnlParams): Promise<PortfolioRealizedPnlResponse> => {
+  const params: Record<string, string> = {};
+  if (from) params.from = from;
+  if (to) params.to = to;
+  if (period) params.period = period;
+  if (financialYear) params.financialYear = financialYear;
+
+  const result = await api.get(`/investments/portfolios/${portfolioId}/realized-pnl`, params);
   return result;
 };

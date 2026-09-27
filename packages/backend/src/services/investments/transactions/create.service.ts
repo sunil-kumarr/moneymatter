@@ -52,10 +52,36 @@ interface CreateTxParams {
    * per row. Without this the function fetches both itself, as before.
    */
   preloadedHolding?: Holdings;
+  /**
+   * Skips the "cannot sell more than currently owned" guard below. Only the
+   * bulk importer sets this: `preloadedHolding` is loaded once per security
+   * and reused across every row of that security's batch, so its `quantity`
+   * never reflects buys the same batch already inserted — a from-scratch
+   * import of a heavily-traded account would reject every legitimate sell
+   * against a stale (often zero) quantity. It also lets a real intraday
+   * short sell (sell recorded before that day's covering buy) through; the
+   * cost-basis replay already tolerates a transient negative quantity
+   * (`cost-basis-replay.ts`), and `recalculateHolding` floors the final
+   * stored quantity at zero for non-crypto once the whole batch has landed.
+   * Manual single-transaction entry through the API/UI keeps the guard as a
+   * typo safety net.
+   */
+  skipOversellCheck?: boolean;
 }
 
 const createInvestmentTransactionImpl = async (params: CreateTxParams) => {
-  const { portfolioId, securityId, userId, category, quantity, price, fees, date, preloadedHolding } = params;
+  const {
+    portfolioId,
+    securityId,
+    userId,
+    category,
+    quantity,
+    price,
+    fees,
+    date,
+    preloadedHolding,
+    skipOversellCheck,
+  } = params;
 
   let holding: Holdings;
   if (preloadedHolding) {
@@ -97,7 +123,7 @@ const createInvestmentTransactionImpl = async (params: CreateTxParams) => {
   // negative — a follow-up "adjust to zero" flow will reconcile the leftover.
   // Stocks have exact share counts, so we keep the strict check.
   const isCrypto = holding.security?.assetClass === ASSET_CLASS.crypto;
-  if (category === INVESTMENT_TRANSACTION_CATEGORY.sell && !isCrypto) {
+  if (category === INVESTMENT_TRANSACTION_CATEGORY.sell && !isCrypto && !skipOversellCheck) {
     const currentQty = new Big(holding.quantity.toDecimalString(10));
     if (new Big(quantity).gt(currentQty)) {
       throw new ValidationError({

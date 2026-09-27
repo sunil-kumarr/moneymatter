@@ -1032,6 +1032,118 @@ describe('Investment transactions AI import — E2E', () => {
     });
   });
 
+  it('imports a from-scratch stocks batch where buys must accumulate before a sell, and a genuine intraday short sell', async () => {
+    // Reproduces a real bug: the per-security `preloadedHolding` is loaded
+    // once before the transaction loop and never refreshed, so every SELL
+    // in a from-scratch import was checked against a stale (zero)
+    // quantity regardless of how many BUYs the same batch already
+    // inserted. `skipOversellCheck` (set by the importer) fixes this, and
+    // also lets a real intraday short sell (STOCK2: sell before that
+    // day's covering buy) through — the cost-basis replay tolerates a
+    // transient negative quantity and floors the final stock quantity at
+    // zero, same as it already does for crypto.
+    const portfolio = await helpers.createPortfolio({
+      payload: helpers.buildPortfolioPayload({ name: 'Stocks from scratch' }),
+      raw: true,
+    });
+
+    const [stock1, stock2] = await helpers.seedSecurities([
+      { symbol: 'STOCK1', name: 'Stock One' },
+      { symbol: 'STOCK2', name: 'Stock Two' },
+    ]);
+
+    const buildHolding = ({
+      tempId,
+      security,
+      transactions,
+    }: {
+      tempId: string;
+      security: Securities;
+      transactions: Array<{ tempId: string; date: string; side: 'buy' | 'sell'; quantity: string; price: string }>;
+    }) => ({
+      tempId,
+      parsedSymbol: security.symbol!,
+      parsedName: security.name,
+      resolvedSecurity: {
+        securityId: security.id,
+        providerSymbol: security.providerSymbol,
+        symbol: security.symbol!,
+        name: security.name!,
+        assetClass: security.assetClass,
+        providerName: security.providerName,
+        currencyCode: security.currencyCode,
+        exchangeName: security.exchangeName ?? undefined,
+        cryptoCurrencyCode: security.cryptoCurrencyCode ?? undefined,
+        alreadyInDb: true,
+      },
+      resolvedConfidence: 'auto' as const,
+      portfolioId: portfolio.id,
+      currencyCode: security.currencyCode,
+      hasExistingHolding: false,
+      transactions: transactions.map((tx) => ({
+        ...tx,
+        fees: '0',
+        amount: (Number(tx.quantity) * Number(tx.price)).toFixed(10),
+        possibleDuplicateOf: null,
+      })),
+    });
+
+    const result = await helpers.investmentImportExecute({
+      payload: {
+        holdings: [
+          // STOCK1 — two buys must accumulate to 10 before the sell of 8 is valid.
+          // With the stale preloadedHolding bug, the sell was checked against
+          // the holding's initial quantity (0) and always rejected.
+          buildHolding({
+            tempId: 'h-stock1',
+            security: stock1!,
+            transactions: [
+              { tempId: 't1', date: '2024-06-01', side: 'buy', quantity: '5', price: '100' },
+              { tempId: 't2', date: '2024-06-01', side: 'buy', quantity: '5', price: '100' },
+              { tempId: 't3', date: '2024-06-02', side: 'sell', quantity: '8', price: '110' },
+            ],
+          }),
+          // STOCK2 — genuine intraday short sell: sell 8 before only 5 have
+          // been bought, then buy 5 more to cover back to a long position.
+          buildHolding({
+            tempId: 'h-stock2',
+            security: stock2!,
+            transactions: [
+              { tempId: 't4', date: '2024-07-01', side: 'buy', quantity: '5', price: '50' },
+              { tempId: 't5', date: '2024-07-01', side: 'sell', quantity: '8', price: '55' },
+              { tempId: 't6', date: '2024-07-01', side: 'buy', quantity: '5', price: '52' },
+            ],
+          }),
+        ],
+        skipTempIds: [],
+      },
+      raw: true,
+    });
+
+    expect(result.failedTransactions).toBe(0);
+    expect(result.createdTransactions).toBe(6);
+    expect(result.warnings).toEqual([]);
+
+    const [h1] = await helpers.getHoldings({
+      portfolioId: portfolio.id,
+      payload: { securityId: stock1!.id },
+      raw: true,
+    });
+    expect(h1!.quantity).toBeNumericEqual(2); // 5 + 5 - 8
+    expect(h1!.costBasis).toBeNumericEqual(200); // 100 * (2 / 10)
+
+    // Net short at one point (5 - 8 = -3), then +5 covers back to +2 — stocks
+    // floor the final stored quantity at zero if it ends negative, but here
+    // it ends positive so no flooring applies.
+    const [h2] = await helpers.getHoldings({
+      portfolioId: portfolio.id,
+      payload: { securityId: stock2!.id },
+      raw: true,
+    });
+    expect(h2!.quantity).toBeNumericEqual(2); // 5 - 8 + 5
+    expect(h2!.costBasis).toBeNumericEqual(104); // covering buy's cost, since basis reset to 0 when qty crossed to negative
+  });
+
   describe('extract source=csv', () => {
     /**
      * Build a column mapping with sensible defaults for the BTC/ETH crypto CSVs

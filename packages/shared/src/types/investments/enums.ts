@@ -64,3 +64,18 @@ export enum COST_BASIS_METHOD {
   weighted_average = 'weighted_average',
   fifo = 'fifo',
 }
+
+/**
+ * Whether a stock trade was squared off same-day (`intraday`, aka MIS/margin
+ * intraday square-off) or actually taken delivery of (`delivery`, aka CNC).
+ * Brokers track this as a separate bucket at order-entry time, so it can't be
+ * reliably inferred from timestamps alone after the fact — it must be sourced
+ * from the broker's own records (e.g. Groww's PnL report `Remark` column) and
+ * persisted per transaction. `null`/unset means unknown (legacy or non-Groww
+ * data), in which case the transaction is treated as delivery for gains
+ * purposes.
+ */
+export enum INVESTMENT_TRADE_TYPE {
+  intraday = 'intraday',
+  delivery = 'delivery',
+}

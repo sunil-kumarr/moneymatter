@@ -1,4 +1,9 @@
-import { INVESTMENT_TRANSACTION_CATEGORY } from '@bt/shared/types/investments';
+import {
+  ASSET_CLASS,
+  COST_BASIS_METHOD,
+  INVESTMENT_TRADE_TYPE,
+  INVESTMENT_TRANSACTION_CATEGORY,
+} from '@bt/shared/types/investments';
 import { INVESTMENT_DECIMAL_SCALE, Money } from '@common/types/money';
 import { logger } from '@js/utils';
 import Holdings from '@models/investments/holdings.model';
@@ -33,6 +38,7 @@ interface GainsTransactionRow {
   /** DECIMAL(20,10) strings. */
   price: string;
   fees: string;
+  tradeType: INVESTMENT_TRADE_TYPE | null;
 }
 
 interface HoldingValue {
@@ -108,7 +114,7 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
       ['date', 'ASC'],
       ['createdAt', 'ASC'],
     ],
-    attributes: ['securityId', 'date', 'category', 'quantity', 'price', 'fees'],
+    attributes: ['securityId', 'date', 'category', 'quantity', 'price', 'fees', 'tradeType'],
     raw: true,
   })) as unknown as GainsTransactionRow[];
 
@@ -162,6 +168,8 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
   // Base and display rates are resolved once per distinct holding currency below:
   // every rate lookup queries the user's currency connection before any cache,
   // so a per-holding call is an N+1 on GET /portfolios/*/summary.
+  const portfolio = await Portfolios.findByPk(portfolioId);
+
   let baseCurrencyCode: string | undefined;
   let displayCurrencyCode: string | undefined;
   if (userId) {
@@ -169,7 +177,6 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
     baseCurrencyCode = userCurrency?.currency.code;
 
     // Display currency applies only while it stays connected to the user; otherwise holdings carry no display fields.
-    const portfolio = await Portfolios.findByPk(portfolioId);
     if (portfolio?.displayCurrencyCode) {
       const connected = await UsersCurrencies.getCurrency({ userId, currencyCode: portfolio.displayCurrencyCode });
       if (connected) displayCurrencyCode = portfolio.displayCurrencyCode;
@@ -264,7 +271,15 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
       }
     }
 
-    // Calculate gains/losses
+    // Calculate gains/losses. FIFO only ever applies to mutual funds — a
+    // portfolio flagged `fifo` still computes stocks/crypto with
+    // weighted-average — matching `recalculateHolding`'s method selection so
+    // realized gains here are computed the same way `Holdings.costBasis` is.
+    const costBasisMethod =
+      holding.security?.assetClass === ASSET_CLASS.mutual_fund && portfolio?.costBasisMethod === COST_BASIS_METHOD.fifo
+        ? COST_BASIS_METHOD.fifo
+        : COST_BASIS_METHOD.weighted_average;
+
     const securityTransactions = transactionsBySecurityId[holding.securityId] || [];
     const gains = calculateAllGains(
       parseFloat(marketValue),
@@ -272,6 +287,7 @@ const getHoldingValuesImpl = async ({ portfolioId, date, userId }: GetHoldingVal
       // Raw rows: quantity/price/fees are already decimal strings, the exact
       // shape `TransactionForGains` accepts.
       securityTransactions,
+      costBasisMethod,
     );
 
     const displayRate = await getDisplayRate(holding.currencyCode);
