@@ -16,6 +16,8 @@ export default createController(
         description: z.string().nullable().optional(),
         displayCurrencyCode: currencyCode().nullable().optional(),
         isEnabled: z.boolean().optional(),
+        enableHoldings: z.boolean().optional(),
+        enableFixedIncome: z.boolean().optional(),
         costBasisMethod: z.nativeEnum(COST_BASIS_METHOD).optional(),
       })
       .strict()

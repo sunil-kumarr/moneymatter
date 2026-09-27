@@ -17,6 +17,8 @@ interface UpdatePortfolioParams {
   description?: string | null;
   displayCurrencyCode?: string | null;
   isEnabled?: boolean;
+  enableHoldings?: boolean;
+  enableFixedIncome?: boolean;
   costBasisMethod?: COST_BASIS_METHOD;
 }
 
@@ -28,6 +30,8 @@ const updatePortfolioImpl = async ({
   description,
   displayCurrencyCode,
   isEnabled,
+  enableHoldings,
+  enableFixedIncome,
   costBasisMethod,
 }: UpdatePortfolioParams) => {
   // Find the portfolio and verify ownership
@@ -57,6 +61,8 @@ const updatePortfolioImpl = async ({
   if (description !== undefined) updateData.description = description;
   if (displayCurrencyCode !== undefined) updateData.displayCurrencyCode = displayCurrencyCode;
   if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
+  if (enableHoldings !== undefined) updateData.enableHoldings = enableHoldings;
+  if (enableFixedIncome !== undefined) updateData.enableFixedIncome = enableFixedIncome;
 
   const costBasisMethodChanged = costBasisMethod !== undefined && costBasisMethod !== portfolio.costBasisMethod;
   if (costBasisMethod !== undefined) updateData.costBasisMethod = costBasisMethod;

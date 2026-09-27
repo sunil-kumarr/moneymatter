@@ -72,6 +72,9 @@
         "weightedAverage": "Weighted average",
         "fifo": "FIFO"
       },
+      "visibleSectionsLabel": "Visible sections",
+      "enableHoldingsLabel": "Show Holdings section",
+      "enableFixedIncomeLabel": "Show Fixed Income section",
       "cancelButton": "Cancel",
       "submitButton": "Save Changes",
       "submitButtonLoading": "Saving...",

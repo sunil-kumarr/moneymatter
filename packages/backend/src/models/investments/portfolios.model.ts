@@ -47,6 +47,14 @@ export default class Portfolios extends Model {
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: true })
   isEnabled!: boolean;
 
+  /** Whether the Holdings section is shown on this portfolio's detail page. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: true })
+  enableHoldings!: boolean;
+
+  /** Whether the Fixed Income section is shown on this portfolio's detail page. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: true })
+  enableFixedIncome!: boolean;
+
   /**
    * Cost-basis algorithm for this portfolio's holdings after a partial sell.
    * Only takes effect for `ASSET_CLASS.mutual_fund` holdings — see

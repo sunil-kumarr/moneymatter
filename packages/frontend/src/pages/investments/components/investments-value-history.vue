@@ -19,6 +19,16 @@
             {{ formatBaseCurrency(investedValue) }}
           </div>
         </div>
+
+        <div v-if="expectedMaturityValue != null">
+          <div class="text-muted-foreground mb-1 flex items-center gap-1.5 text-sm">
+            <span class="size-2.5 shrink-0 rounded-full bg-emerald-500" />
+            {{ $t('investments.valueHistory.expectedMaturity') }}
+          </div>
+          <div class="text-xl font-semibold text-emerald-600 @xl/investments-value:text-2xl dark:text-emerald-400">
+            {{ formatBaseCurrency(expectedMaturityValue) }}
+          </div>
+        </div>
       </div>
 
       <div v-if="hasData" class="text-right">
@@ -80,8 +90,19 @@ const hasData = computed(() => points.value.some((point) => point.currentValue !
 
 const { formatBaseCurrency } = useFormatCurrency();
 
-const currentValue = computed(() => points.value[points.value.length - 1]?.currentValue ?? 0);
-const investedValue = computed(() => points.value[points.value.length - 1]?.investedValue ?? 0);
+const currentValue = computed(() => {
+  const pastPoints = points.value.filter((p) => p.currentValue != null);
+  return pastPoints[pastPoints.length - 1]?.currentValue ?? 0;
+});
+const investedValue = computed(() => {
+  const pastPoints = points.value.filter((p) => p.currentValue != null);
+  return pastPoints[pastPoints.length - 1]?.investedValue ?? points.value[points.value.length - 1]?.investedValue ?? 0;
+});
+const expectedMaturityValue = computed(() => {
+  const futurePoints = points.value.filter((p) => p.projectedValue != null);
+  if (futurePoints.length === 0) return null;
+  return futurePoints[futurePoints.length - 1]?.projectedValue ?? null;
+});
 
 const gain = computed(() => {
   const amount = currentValue.value - investedValue.value;

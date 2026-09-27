@@ -71,6 +71,12 @@ router.get(
   getPortfolioValueHistoryController.handler,
 );
 
+router.get(
+  '/portfolios/:id/value-history',
+  validateEndpoint(getPortfolioValueHistoryController.schema),
+  getPortfolioValueHistoryController.handler,
+);
+
 router.get('/portfolios/:id', validateEndpoint(getPortfolioController.schema), getPortfolioController.handler);
 
 router.get(

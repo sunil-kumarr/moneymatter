@@ -6,6 +6,48 @@ import * as helpers from '@tests/helpers';
 
 describe('Update Portfolio Service E2E', () => {
   describe('PUT /investments/portfolios/:id', () => {
+    describe('Section visibility toggles', () => {
+      it('defaults enableHoldings/enableFixedIncome to true and allows toggling them independently', async () => {
+        const createResponse = await helpers.createPortfolio({
+          payload: { name: 'Section Toggle Portfolio' },
+        });
+        const createdPortfolio = helpers.extractResponse(createResponse);
+
+        expect(createdPortfolio.enableHoldings).toBe(true);
+        expect(createdPortfolio.enableFixedIncome).toBe(true);
+
+        const holdingsOffResponse = await helpers.updatePortfolio({
+          portfolioId: createdPortfolio.id,
+          payload: { enableHoldings: false },
+        });
+
+        expect(holdingsOffResponse.statusCode).toBe(200);
+        const holdingsOffPortfolio = helpers.extractResponse(holdingsOffResponse);
+        expect(holdingsOffPortfolio.enableHoldings).toBe(false);
+        expect(holdingsOffPortfolio.enableFixedIncome).toBe(true);
+
+        const fixedIncomeOffResponse = await helpers.updatePortfolio({
+          portfolioId: createdPortfolio.id,
+          payload: { enableFixedIncome: false },
+        });
+
+        expect(fixedIncomeOffResponse.statusCode).toBe(200);
+        const fixedIncomeOffPortfolio = helpers.extractResponse(fixedIncomeOffResponse);
+        expect(fixedIncomeOffPortfolio.enableHoldings).toBe(false);
+        expect(fixedIncomeOffPortfolio.enableFixedIncome).toBe(false);
+
+        const bothOnResponse = await helpers.updatePortfolio({
+          portfolioId: createdPortfolio.id,
+          payload: { enableHoldings: true, enableFixedIncome: true },
+        });
+
+        expect(bothOnResponse.statusCode).toBe(200);
+        const bothOnPortfolio = helpers.extractResponse(bothOnResponse);
+        expect(bothOnPortfolio.enableHoldings).toBe(true);
+        expect(bothOnPortfolio.enableFixedIncome).toBe(true);
+      });
+    });
+
     describe('Success cases', () => {
       it('should perform multiple successful update operations', async () => {
         // Create a single portfolio for all update tests

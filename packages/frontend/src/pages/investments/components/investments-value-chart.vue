@@ -16,14 +16,21 @@
       <ChartTooltip>
         <ChartTooltipHeader>{{ tooltip.date }}</ChartTooltipHeader>
         <ChartTooltipRow
+          v-if="tooltip.currentValue != null"
           :color="chartColors.primary"
           :label="$t('investments.valueHistory.current')"
-          :value="formatBaseCurrency(tooltip.currentValue)"
+          :value="formatCurrency(tooltip.currentValue)"
+        />
+        <ChartTooltipRow
+          v-if="tooltip.projectedValue != null"
+          color="#10b981"
+          :label="$t('investments.valueHistory.expectedMaturity')"
+          :value="formatCurrency(tooltip.projectedValue)"
         />
         <ChartTooltipRow
           :color="chartColors.text"
           :label="$t('investments.valueHistory.invested')"
-          :value="formatBaseCurrency(tooltip.investedValue)"
+          :value="formatCurrency(tooltip.investedValue)"
         />
       </ChartTooltip>
     </div>
@@ -45,27 +52,55 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 
 const props = defineProps<{
   points: PortfolioValueHistoryItem[];
+  currencyCode?: string;
 }>();
 
-const { formatBaseCurrency, getCurrencySymbol } = useFormatCurrency();
+const { formatBaseCurrency, formatAmountByCurrencyCode, getCurrencySymbol } = useFormatCurrency();
+
+const formatCurrency = (val: number) =>
+  props.currencyCode ? formatAmountByCurrencyCode(val, props.currencyCode) : formatBaseCurrency(val);
+
+const currencySymbol = computed(() => getCurrencySymbol(props.currencyCode));
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const svgRef = ref<SVGSVGElement | null>(null);
 const tooltipRef = ref<HTMLDivElement | null>(null);
 
-const tooltip = reactive({ visible: false, x: 0, y: 0, date: '', currentValue: 0, investedValue: 0 });
+const tooltip = reactive<{
+  visible: boolean;
+  x: number;
+  y: number;
+  date: string;
+  currentValue: number | null;
+  investedValue: number;
+  projectedValue: number | null;
+}>({
+  visible: false,
+  x: 0,
+  y: 0,
+  date: '',
+  currentValue: 0,
+  investedValue: 0,
+  projectedValue: null,
+});
 const { updateTooltipPosition } = useChartTooltipPosition({ containerRef, tooltipRef, tooltip });
 
 const chartColors = ref(getChartColors());
 
-type ChartPoint = { date: number; currentValue: number; investedValue: number };
+type ChartPoint = {
+  date: number;
+  currentValue: number | null;
+  investedValue: number;
+  projectedValue: number | null;
+};
 
 const chartData = computed<ChartPoint[]>(() =>
   props.points
     .map((point) => ({
       date: parseISO(point.date).getTime(),
-      currentValue: point.currentValue,
+      currentValue: point.currentValue != null ? point.currentValue : null,
       investedValue: point.investedValue,
+      projectedValue: point.projectedValue != null ? point.projectedValue : null,
     }))
     .sort((a, b) => a.date - b.date),
 );
@@ -91,7 +126,11 @@ const renderChart = () => {
     .domain(d3.extent(chartData.value, (d) => d.date) as [number, number])
     .range([0, innerWidth]);
 
-  const allValues = chartData.value.flatMap((d) => [d.currentValue, d.investedValue]);
+  const allValues = chartData.value.flatMap((d) => [
+    ...(d.currentValue != null ? [d.currentValue] : []),
+    d.investedValue,
+    ...(d.projectedValue != null ? [d.projectedValue] : []),
+  ]);
   const [yMinRaw, yMaxRaw] = d3.extent(allValues) as [number, number];
   const yPadding = (yMaxRaw - yMinRaw) * 0.1 || Math.abs(yMaxRaw) * 0.1 || 100;
   const yScale = d3
@@ -126,26 +165,39 @@ const renderChart = () => {
   gradient.append('stop').attr('offset', '0%').attr('stop-color', 'var(--primary)').attr('stop-opacity', 0.35);
   gradient.append('stop').attr('offset', '100%').attr('stop-color', 'var(--primary)').attr('stop-opacity', 0);
 
-  const area = d3
-    .area<ChartPoint>()
-    .x((d) => xScale(d.date))
-    .y0(innerHeight)
-    .y1((d) => yScale(d.currentValue))
-    .curve(d3.curveMonotoneX);
+  const currentPoints = chartData.value.filter((d) => d.currentValue != null);
+  const projectedPoints = chartData.value.filter((d) => d.projectedValue != null);
 
-  const currentLine = d3
-    .line<ChartPoint>()
-    .x((d) => xScale(d.date))
-    .y((d) => yScale(d.currentValue))
-    .curve(d3.curveMonotoneX);
+  if (currentPoints.length >= 2) {
+    const area = d3
+      .area<ChartPoint>()
+      .x((d) => xScale(d.date))
+      .y0(innerHeight)
+      .y1((d) => yScale(d.currentValue!))
+      .curve(d3.curveMonotoneX);
 
+    const currentLine = d3
+      .line<ChartPoint>()
+      .x((d) => xScale(d.date))
+      .y((d) => yScale(d.currentValue!))
+      .curve(d3.curveMonotoneX);
+
+    g.append('path').datum(currentPoints).attr('fill', `url(#${gradientId})`).attr('d', area);
+
+    g.append('path')
+      .datum(currentPoints)
+      .attr('fill', 'none')
+      .attr('stroke', 'var(--primary)')
+      .attr('stroke-width', 2)
+      .attr('d', currentLine);
+  }
+
+  // Invested capital line
   const investedLine = d3
     .line<ChartPoint>()
     .x((d) => xScale(d.date))
     .y((d) => yScale(d.investedValue))
     .curve(d3.curveMonotoneX);
-
-  g.append('path').datum(chartData.value).attr('fill', `url(#${gradientId})`).attr('d', area);
 
   g.append('path')
     .datum(chartData.value)
@@ -155,12 +207,56 @@ const renderChart = () => {
     .attr('stroke-dasharray', '4,3')
     .attr('d', investedLine);
 
-  g.append('path')
-    .datum(chartData.value)
-    .attr('fill', 'none')
-    .attr('stroke', 'var(--primary)')
-    .attr('stroke-width', 2)
-    .attr('d', currentLine);
+  // Future projected maturity line
+  if (projectedPoints.length >= 2) {
+    const projectedLine = d3
+      .line<ChartPoint>()
+      .x((d) => xScale(d.date))
+      .y((d) => yScale(d.projectedValue!))
+      .curve(d3.curveMonotoneX);
+
+    g.append('path')
+      .datum(projectedPoints)
+      .attr('fill', 'none')
+      .attr('stroke', '#10b981')
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '5,4')
+      .attr('d', projectedLine);
+
+    // Marker dot at final maturity date
+    const finalPoint = projectedPoints[projectedPoints.length - 1]!;
+    g.append('circle')
+      .attr('cx', xScale(finalPoint.date))
+      .attr('cy', yScale(finalPoint.projectedValue!))
+      .attr('r', 4)
+      .attr('fill', '#10b981')
+      .attr('stroke', 'var(--card)')
+      .attr('stroke-width', 1.5);
+  }
+
+  // "Today" marker line when chart extends into the future
+  if (projectedPoints.length > 0 && currentPoints.length > 0) {
+    const todayPoint = currentPoints[currentPoints.length - 1]!;
+    const todayX = xScale(todayPoint.date);
+    if (todayX > 10 && todayX < innerWidth - 10) {
+      g.append('line')
+        .attr('x1', todayX)
+        .attr('x2', todayX)
+        .attr('y1', 0)
+        .attr('y2', innerHeight)
+        .attr('stroke', colors.grid)
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '2,2');
+
+      g.append('text')
+        .attr('x', todayX)
+        .attr('y', 12)
+        .attr('text-anchor', 'middle')
+        .attr('fill', colors.text)
+        .attr('font-size', '10px')
+        .text('Today');
+    }
+  }
 
   g.append('g')
     .attr('transform', `translate(0,${innerHeight})`)
@@ -181,7 +277,7 @@ const renderChart = () => {
       d3
         .axisLeft(yScale)
         .ticks(5)
-        .tickFormat((d) => formatAxisCurrency({ value: d as number, symbol: getCurrencySymbol() })),
+        .tickFormat((d) => formatAxisCurrency({ value: d as number, symbol: currencySymbol.value })),
     )
     .call((axis) => {
       axis.select('.domain').remove();
@@ -226,9 +322,11 @@ const renderChart = () => {
       if (!d0) return;
 
       const d = d1 && x0 - d0.date > d1.date - x0 ? d1 : d0;
+      const targetYVal = d.currentValue != null ? d.currentValue : (d.projectedValue ?? d.investedValue);
+      const dotColor = d.currentValue != null ? 'var(--primary)' : '#10b981';
 
-      hoverDot.attr('cx', xScale(d.date)).attr('cy', yScale(d.currentValue));
-      hoverLine.attr('x1', xScale(d.date)).attr('x2', xScale(d.date));
+      hoverDot.attr('cx', xScale(d.date)).attr('cy', yScale(targetYVal)).attr('fill', dotColor);
+      hoverLine.attr('x1', xScale(d.date)).attr('x2', xScale(d.date)).attr('stroke', dotColor);
 
       tooltip.date = new Date(d.date).toLocaleDateString(undefined, {
         month: 'short',
@@ -237,6 +335,7 @@ const renderChart = () => {
       });
       tooltip.currentValue = d.currentValue;
       tooltip.investedValue = d.investedValue;
+      tooltip.projectedValue = d.projectedValue;
       tooltip.visible = true;
 
       updateTooltipPosition(event);

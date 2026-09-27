@@ -4,6 +4,7 @@ import FieldLabel from '@/components/fields/components/field-label.vue';
 import InputField from '@/components/fields/input-field.vue';
 import TextareaField from '@/components/fields/textarea-field.vue';
 import UiButton from '@/components/lib/ui/button/Button.vue';
+import { Checkbox } from '@/components/lib/ui/checkbox';
 import * as Select from '@/components/lib/ui/select';
 import { NotificationType, useNotificationCenter } from '@/components/notification-center';
 import { useUpdatePortfolio } from '@/composable/data-queries/portfolios';
@@ -46,6 +47,8 @@ const form = reactive({
   description: '',
   displayCurrencyCode: null as string | null,
   costBasisMethod: COST_BASIS_METHOD.weighted_average as COST_BASIS_METHOD,
+  enableHoldings: true,
+  enableFixedIncome: true,
 });
 
 watch(
@@ -57,6 +60,8 @@ watch(
       form.description = p.description ?? '';
       form.displayCurrencyCode = p.displayCurrencyCode ?? null;
       form.costBasisMethod = p.costBasisMethod ?? COST_BASIS_METHOD.weighted_average;
+      form.enableHoldings = p.enableHoldings ?? true;
+      form.enableFixedIncome = p.enableFixedIncome ?? true;
     }
   },
   { immediate: true },
@@ -73,7 +78,9 @@ const isSubmitDisabled = computed(
       form.portfolioType === props.portfolio.portfolioType &&
       (form.description ?? '') === (props.portfolio.description ?? '') &&
       form.displayCurrencyCode === (props.portfolio.displayCurrencyCode ?? null) &&
-      form.costBasisMethod === (props.portfolio.costBasisMethod ?? COST_BASIS_METHOD.weighted_average)),
+      form.costBasisMethod === (props.portfolio.costBasisMethod ?? COST_BASIS_METHOD.weighted_average) &&
+      form.enableHoldings === (props.portfolio.enableHoldings ?? true) &&
+      form.enableFixedIncome === (props.portfolio.enableFixedIncome ?? true)),
 );
 
 const onSubmit = async () => {
@@ -85,6 +92,8 @@ const onSubmit = async () => {
       description: form.description?.trim() || undefined,
       displayCurrencyCode: form.displayCurrencyCode,
       costBasisMethod: form.costBasisMethod,
+      enableHoldings: form.enableHoldings,
+      enableFixedIncome: form.enableFixedIncome,
     });
 
     addNotification({
@@ -143,6 +152,24 @@ const onSubmit = async () => {
         </Select.Select>
       </FieldLabel>
       <p class="text-muted-foreground mt-1 text-xs">{{ $t('forms.portfolioSettings.costBasisMethodHint') }}</p>
+    </div>
+
+    <div class="grid gap-3">
+      <FieldLabel :label="$t('forms.portfolioSettings.visibleSectionsLabel')" />
+
+      <label class="flex cursor-pointer items-center gap-3">
+        <Checkbox v-model="form.enableHoldings" :disabled="updateMutation.isPending.value || disabled" />
+        <span class="text-sm leading-none font-medium">
+          {{ $t('forms.portfolioSettings.enableHoldingsLabel') }}
+        </span>
+      </label>
+
+      <label class="flex cursor-pointer items-center gap-3">
+        <Checkbox v-model="form.enableFixedIncome" :disabled="updateMutation.isPending.value || disabled" />
+        <span class="text-sm leading-none font-medium">
+          {{ $t('forms.portfolioSettings.enableFixedIncomeLabel') }}
+        </span>
+      </label>
     </div>
 
     <TextareaField

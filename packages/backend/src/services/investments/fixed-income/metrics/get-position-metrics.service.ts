@@ -1,4 +1,5 @@
 import {
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
   FIXED_INCOME_EVENT_TYPE,
   FIXED_INCOME_POSITION_STATUS,
   FixedIncomePositionMetricsModel,
@@ -97,6 +98,10 @@ export async function getFixedIncomePositionMetrics({
   } else if (position.status === FIXED_INCOME_POSITION_STATUS.fully_repaid) {
     maturityValue = principalReturnedToDate;
   } else if (position.expectedEndDate) {
+    const returnCashToAccount =
+      position.payoutAccountId != null ||
+      position.maturityInstruction === FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account;
+
     if (position.interestPayoutFrequency === INTEREST_PAYOUT_FREQUENCY.cumulative) {
       const maturityAccrual = computeAccruedInterest({
         principal: position.principal.toDecimalString(10),
@@ -107,11 +112,17 @@ export async function getFixedIncomePositionMetrics({
         events,
         asOfDate: new Date(`${position.expectedEndDate}T00:00:00.000Z`),
       });
-      maturityValue = new Big(maturityAccrual.principalOutstanding)
-        .plus(maturityAccrual.accruedUnpaidInterest)
-        .toFixed(10);
+      let baseMaturity = new Big(maturityAccrual.principalOutstanding).plus(maturityAccrual.accruedUnpaidInterest);
+      if (returnCashToAccount && new Big(principalReturnedToDate).gt(0)) {
+        baseMaturity = baseMaturity.plus(principalReturnedToDate);
+      }
+      maturityValue = baseMaturity.toFixed(10);
     } else {
-      maturityValue = new Big(principalOutstanding).toFixed(10);
+      let baseMaturity = new Big(principalOutstanding);
+      if (returnCashToAccount && new Big(principalReturnedToDate).gt(0)) {
+        baseMaturity = baseMaturity.plus(principalReturnedToDate);
+      }
+      maturityValue = baseMaturity.toFixed(10);
     }
   }
 

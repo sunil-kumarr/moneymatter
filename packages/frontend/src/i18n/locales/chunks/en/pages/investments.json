@@ -40,6 +40,8 @@
     "valueHistory": {
       "current": "Current",
       "invested": "Invested",
+      "expectedMaturity": "Expected Maturity",
+      "today": "Today",
       "states": {
         "noData": "Not enough history to show a chart yet",
         "loadError": "Failed to load your investment history"

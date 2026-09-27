@@ -59,8 +59,13 @@
       <div v-if="portfolio" class="grid gap-6">
         <PortfolioBalance :portfolio-id="portfolioId" />
         <PortfolioRealizedPnlChart v-if="hasStocks" :portfolio-id="portfolioId" />
-        <HoldingsSummary :portfolio-id="portfolioId" />
-        <FixedIncomeSummary :portfolio-id="portfolioId" />
+        <PortfolioValueHistoryChart
+          v-if="hasFixedIncome"
+          :portfolio-id="portfolioId"
+          :currency-code="portfolio.displayCurrencyCode || undefined"
+        />
+        <HoldingsSummary v-if="portfolio.enableHoldings" :portfolio-id="portfolioId" />
+        <FixedIncomeSummary v-if="portfolio.enableFixedIncome" :portfolio-id="portfolioId" />
         <PortfolioCashBalances :portfolio-id="portfolioId" :portfolio="portfolio" />
       </div>
 
@@ -92,6 +97,7 @@ import ResourceNotFound from '@/components/common/resource-not-found.vue';
 import DeletePortfolioDialog from '@/components/dialogs/delete-portfolio-dialog.vue';
 import EditPortfolioDialog from '@/components/dialogs/edit-portfolio-dialog.vue';
 import UiButton from '@/components/lib/ui/button/Button.vue';
+import { useFixedIncomePositions } from '@/composable/data-queries/fixed-income/positions';
 import { useHoldings } from '@/composable/data-queries/holdings';
 import { usePortfolio } from '@/composable/data-queries/portfolios';
 import { isResourceMissingError } from '@/js/errors';
@@ -106,6 +112,7 @@ import HoldingsSummary from './components/holdings-summary.vue';
 import PortfolioBalance from './components/portfolio-balance.vue';
 import PortfolioCashBalances from './components/portfolio-cash-balances.vue';
 import PortfolioRealizedPnlChart from './components/portfolio-realized-pnl-chart.vue';
+import PortfolioValueHistoryChart from './components/portfolio-value-history-chart.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -113,11 +120,14 @@ const portfolioId = computed(() => String(route.params.portfolioId));
 
 const { data: portfolio, isLoading, isError, error, refetch } = usePortfolio(portfolioId, { retry: false });
 const { data: holdings } = useHoldings(portfolioId);
+const { data: fixedIncomePositions } = useFixedIncomePositions(portfolioId);
 
 const hasStocks = computed(() => {
   if (!holdings.value) return false;
   return holdings.value.some((h) => !h.security?.assetClass || h.security.assetClass === ASSET_CLASS.stocks);
 });
+
+const hasFixedIncome = computed(() => (fixedIncomePositions.value?.length ?? 0) > 0);
 
 const isNotFound = computed(() => isError.value && isResourceMissingError(error.value));
 

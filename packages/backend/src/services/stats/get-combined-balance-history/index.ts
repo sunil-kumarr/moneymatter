@@ -1,5 +1,9 @@
 import { ACCOUNT_CATEGORIES } from '@bt/shared/types';
-import { COST_BASIS_METHOD } from '@bt/shared/types/investments';
+import {
+  COST_BASIS_METHOD,
+  FIXED_DEPOSIT_MATURITY_INSTRUCTION,
+  FIXED_INCOME_POSITION_STATUS,
+} from '@bt/shared/types/investments';
 import { Money } from '@common/types/money';
 import { logger } from '@js/utils';
 import Accounts from '@models/accounts.model';
@@ -16,6 +20,7 @@ import UserExchangeRates from '@models/user-exchange-rates.model';
 import UsersCurrencies from '@models/users-currencies.model';
 import { withTransaction } from '@services/common/with-transaction';
 import { API_LAYER_BASE_CURRENCY_CODE } from '@services/exchange-rates/constants';
+import { computeAccruedInterest } from '@services/investments/fixed-income/metrics/compute-accrued-interest';
 import { buildUsdRateLookup } from '@services/stats/build-usd-rate-lookup';
 import { calculateVehiclesBalanceHistory } from '@services/stats/calculate-vehicles-balance-history';
 import { calculateVentureBalanceHistory } from '@services/stats/calculate-venture-balance-history';
@@ -53,18 +58,27 @@ const calculatePortfolioBalanceHistory = async ({
   maxDate,
   uniqueDates,
   userBaseCurrencyPromise,
+  portfolioId,
 }: {
   userId: number;
   minDate: string;
   maxDate: string;
   uniqueDates: string[];
   userBaseCurrencyPromise: Promise<Pick<UsersCurrencies, 'currencyCode'> | null>;
-}): Promise<{ portfolioValuesByDate: Map<string, number>; investedValueByDate: Map<string, number> } | null> => {
+  portfolioId?: string;
+}): Promise<{
+  portfolioValuesByDate: Map<string, number>;
+  investedValueByDate: Map<string, number>;
+  holdingsValueByDate: Map<string, number>;
+  cashInBaseByDate: Map<string, number>;
+  fixedIncomePositions: FixedIncomePositions[];
+  getExchangeRate: (currencyCode: string, dateStr: string) => number;
+} | null> => {
   const [userBaseCurrency, portfolios] = await Promise.all([
     userBaseCurrencyPromise,
     Portfolios.findAll({
-      where: { userId, isEnabled: true },
-      attributes: ['id', 'costBasisMethod'],
+      where: { userId, isEnabled: true, ...(portfolioId ? { id: portfolioId } : {}) },
+      attributes: ['id', 'costBasisMethod', 'displayCurrencyCode'],
       raw: true,
     }),
   ]);
@@ -77,6 +91,10 @@ const calculatePortfolioBalanceHistory = async ({
   const costBasisMethodByPortfolioId = new Map(
     portfolios.map((p: { id: string; costBasisMethod: COST_BASIS_METHOD }) => [p.id, p.costBasisMethod]),
   );
+
+  const targetCurrencyCode =
+    (portfolioId && (portfolios[0] as { displayCurrencyCode?: string | null })?.displayCurrencyCode) ||
+    userBaseCurrency.currencyCode;
 
   // Fetch cash rows through end-of-TODAY even when the window ends earlier:
   // `computePortfolioCashByDate` anchors on current stored cash and needs
@@ -266,7 +284,7 @@ const calculatePortfolioBalanceHistory = async ({
   const missingRateCurrencies = new Set<string>();
   const findLatestUsdRate = createFindLatestUsdRate({ usdRatesMap, usdRateDatesByQuote });
   const getExchangeRate = createGetExchangeRate({
-    userBaseCurrencyCode: userBaseCurrency.currencyCode,
+    userBaseCurrencyCode: targetCurrencyCode,
     userRatesMap,
     findLatestUsdRate,
     onMissingRate: (code) => missingRateCurrencies.add(code),
@@ -362,7 +380,14 @@ const calculatePortfolioBalanceHistory = async ({
     });
   }
 
-  return { portfolioValuesByDate, investedValueByDate };
+  return {
+    portfolioValuesByDate,
+    investedValueByDate,
+    holdingsValueByDate,
+    cashInBaseByDate,
+    fixedIncomePositions,
+    getExchangeRate,
+  };
 };
 
 /**
@@ -512,13 +537,15 @@ export const getPortfolioValueHistory = async ({
   userId,
   from,
   to,
+  portfolioId,
 }: {
   userId: number;
   from?: string;
   to?: string;
+  portfolioId?: string;
 }): Promise<PortfolioValueHistoryItem[]> => {
   const maxDate = to || format(new Date(), 'yyyy-MM-dd');
-  const minDate = from ?? (await resolveOldestEventDate({ userId, fallback: maxDate }));
+  const minDate = from ?? (await resolveOldestEventDate({ userId, fallback: maxDate, portfolioId }));
 
   const uniqueDates = eachDayOfInterval({
     start: parseISO(minDate),
@@ -532,16 +559,119 @@ export const getPortfolioValueHistory = async ({
   }) as Promise<Pick<UsersCurrencies, 'currencyCode'> | null>;
 
   const portfolioBalanceHistory = await withTransaction(() =>
-    calculatePortfolioBalanceHistory({ userId, minDate, maxDate, uniqueDates, userBaseCurrencyPromise }),
+    calculatePortfolioBalanceHistory({ userId, minDate, maxDate, uniqueDates, userBaseCurrencyPromise, portfolioId }),
   )();
 
   if (!portfolioBalanceHistory) return [];
 
-  const { portfolioValuesByDate, investedValueByDate } = portfolioBalanceHistory;
+  const {
+    portfolioValuesByDate,
+    investedValueByDate,
+    holdingsValueByDate,
+    cashInBaseByDate,
+    fixedIncomePositions,
+    getExchangeRate,
+  } = portfolioBalanceHistory;
 
-  return uniqueDates.map((dateStr) => ({
-    date: dateStr,
-    currentValue: portfolioValuesByDate.get(dateStr) ?? 0,
-    investedValue: investedValueByDate.get(dateStr) ?? 0,
-  }));
+  // Check if there are active fixed income positions that have an expected maturity date in the future.
+  const activeFixedIncome = fixedIncomePositions.filter((pos) => {
+    const isClosed =
+      pos.status === FIXED_INCOME_POSITION_STATUS.written_off ||
+      pos.status === FIXED_INCOME_POSITION_STATUS.fully_repaid;
+    return !isClosed && pos.expectedEndDate && pos.expectedEndDate > maxDate;
+  });
+
+  let futureMaxDate = maxDate;
+  for (const pos of activeFixedIncome) {
+    if (pos.expectedEndDate && pos.expectedEndDate > futureMaxDate) {
+      futureMaxDate = pos.expectedEndDate;
+    }
+  }
+
+  const projectedValueByDate = new Map<string, number>();
+
+  if (futureMaxDate > maxDate) {
+    const futureDates = eachDayOfInterval({
+      start: parseISO(maxDate),
+      end: parseISO(futureMaxDate),
+    }).map((date) => format(date, 'yyyy-MM-dd'));
+
+    const holdingsAtMax = holdingsValueByDate.get(maxDate) ?? 0;
+    const cashAtMax = cashInBaseByDate.get(maxDate) ?? 0;
+
+    for (const dateStr of futureDates) {
+      let fixedIncomeProjectedTotal = 0;
+
+      for (const position of fixedIncomePositions) {
+        if (position.startDate > dateStr) continue;
+
+        const isClosed =
+          position.status === FIXED_INCOME_POSITION_STATUS.written_off ||
+          position.status === FIXED_INCOME_POSITION_STATUS.fully_repaid;
+        if (isClosed) continue;
+
+        const returnCashToAccount =
+          position.payoutAccountId != null ||
+          position.maturityInstruction === FIXED_DEPOSIT_MATURITY_INSTRUCTION.credit_to_account;
+
+        // If after expectedEndDate, the position value stays at its matured value
+        const asOf =
+          position.expectedEndDate && dateStr >= position.expectedEndDate ? position.expectedEndDate : dateStr;
+
+        const accrual = computeAccruedInterest({
+          principal: position.principal.toDecimalString(10),
+          interestRatePct: position.interestRatePct,
+          compoundingFrequency: position.compoundingFrequency,
+          dayCountConvention: position.dayCountConvention,
+          startDate: position.startDate,
+          events: position.events ?? [],
+          asOfDate: new Date(`${asOf}T00:00:00.000Z`),
+        });
+
+        let posValue = Number(accrual.principalOutstanding) + Number(accrual.accruedUnpaidInterest);
+        if (returnCashToAccount && Number(accrual.principalReturnedToDate) > 0) {
+          posValue += Number(accrual.principalReturnedToDate);
+        }
+
+        if (posValue > 0) {
+          fixedIncomeProjectedTotal += posValue * getExchangeRate(position.currencyCode, maxDate);
+        }
+      }
+
+      const totalProjected = holdingsAtMax + cashAtMax + fixedIncomeProjectedTotal;
+      projectedValueByDate.set(dateStr, Money.fromDecimal(totalProjected).toCents());
+    }
+  }
+
+  const result: PortfolioValueHistoryItem[] = [];
+
+  for (const dateStr of uniqueDates) {
+    const isToday = dateStr === maxDate;
+    result.push({
+      date: dateStr,
+      currentValue: portfolioValuesByDate.get(dateStr) ?? 0,
+      investedValue: investedValueByDate.get(dateStr) ?? 0,
+      projectedValue: isToday && projectedValueByDate.has(maxDate) ? projectedValueByDate.get(maxDate)! : null,
+    });
+  }
+
+  if (futureMaxDate > maxDate) {
+    const futureDates = eachDayOfInterval({
+      start: parseISO(maxDate),
+      end: parseISO(futureMaxDate),
+    }).map((date) => format(date, 'yyyy-MM-dd'));
+
+    const lastInvested = investedValueByDate.get(maxDate) ?? 0;
+    for (const dateStr of futureDates) {
+      if (dateStr === maxDate) continue;
+      result.push({
+        date: dateStr,
+        currentValue: null,
+        investedValue: lastInvested,
+        projectedValue: projectedValueByDate.get(dateStr) ?? null,
+      });
+    }
+  }
+
+  return result;
 };

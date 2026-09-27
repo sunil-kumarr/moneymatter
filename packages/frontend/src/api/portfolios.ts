@@ -18,6 +18,10 @@ interface CreatePortfolioRequest {
   /** Currency for displaying portfolio summary/stats. Null/omitted = user's base currency. */
   displayCurrencyCode?: string | null;
   isEnabled?: boolean;
+  /** Whether the Holdings section is shown on this portfolio's detail page. */
+  enableHoldings?: boolean;
+  /** Whether the Fixed Income section is shown on this portfolio's detail page. */
+  enableFixedIncome?: boolean;
   /** Cost-basis algorithm for this portfolio's mutual_fund holdings. See `COST_BASIS_METHOD`. */
   costBasisMethod?: COST_BASIS_METHOD;
 }
@@ -268,13 +272,16 @@ export const getPortfoliosAnnualizedReturns = async (): Promise<PortfolioAnnuali
 export const getPortfoliosValueHistory = async ({
   from,
   to,
+  portfolioId,
 }: {
   from?: string;
   to?: string;
+  portfolioId?: string;
 }): Promise<PortfolioValueHistoryItem[]> => {
   const params: Record<string, string> = {};
   if (from) params.from = from;
   if (to) params.to = to;
+  if (portfolioId) params.portfolioId = portfolioId;
   const result = await api.get('/investments/portfolios/value-history', params);
   return result;
 };

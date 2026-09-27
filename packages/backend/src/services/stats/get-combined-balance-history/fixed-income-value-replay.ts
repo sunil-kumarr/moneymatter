@@ -29,10 +29,9 @@ export const computeFixedIncomeByDate = ({
   const investedValueByDate = new Map<string, number>();
   if (uniqueDates.length === 0 || positions.length === 0) return { currentValueByDate, investedValueByDate };
 
-  // Cost basis is recognized once, on the initial_investment event's date, and never
-  // changes afterward — repayments/write-downs move currentValue, not how much was
-  // originally put in. Bucketed by date, then walked forward as a running sum below,
-  // the same pattern `net-invested-replay.ts` uses for portfolio cash deposits.
+  // Cost basis is recognized on the initial_investment event's date.
+  // When principal repayments (partial, full, maturity) occur, returned cash
+  // is subtracted so invested capital in this position accurately tracks remaining principal.
   const investedDeltaByDate = new Map<string, number>();
   for (const position of positions) {
     const events = position.events ?? [];
@@ -41,6 +40,22 @@ export const computeFixedIncomeByDate = ({
     const costBasis =
       Number(computeCostBasis({ position, events })) * getExchangeRate(position.currencyCode, eventDate);
     investedDeltaByDate.set(eventDate, (investedDeltaByDate.get(eventDate) ?? 0) + costBasis);
+
+    for (const event of events) {
+      if (
+        event.type === FIXED_INCOME_EVENT_TYPE.partial_repayment ||
+        event.type === FIXED_INCOME_EVENT_TYPE.full_repayment ||
+        event.type === FIXED_INCOME_EVENT_TYPE.maturity
+      ) {
+        const returnedAmount = Number(
+          event.principalReturnedThisEvent ?? event.principalComponent?.toDecimalString(10) ?? '0',
+        );
+        if (returnedAmount > 0) {
+          const reduction = returnedAmount * getExchangeRate(position.currencyCode, event.eventDate);
+          investedDeltaByDate.set(event.eventDate, (investedDeltaByDate.get(event.eventDate) ?? 0) - reduction);
+        }
+      }
+    }
   }
 
   const firstDate = uniqueDates[0]!;
@@ -52,7 +67,7 @@ export const computeFixedIncomeByDate = ({
   for (const dateStr of uniqueDates) {
     const delta = investedDeltaByDate.get(dateStr);
     if (delta) investedRunning += delta;
-    investedValueByDate.set(dateStr, investedRunning);
+    investedValueByDate.set(dateStr, Math.max(0, investedRunning));
 
     let currentTotal = 0;
     for (const position of positions) {

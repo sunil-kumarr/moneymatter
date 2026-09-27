@@ -34,6 +34,10 @@ export interface PortfolioModel {
   /** Currency for displaying portfolio summary/stats. Null = user's base currency. */
   displayCurrencyCode: string | null;
   isEnabled: boolean;
+  /** Whether the Holdings section is shown on this portfolio's detail page. */
+  enableHoldings: boolean;
+  /** Whether the Fixed Income section is shown on this portfolio's detail page. */
+  enableFixedIncome: boolean;
   /** Cost-basis algorithm for this portfolio's mutual_fund holdings. See `COST_BASIS_METHOD`. */
   costBasisMethod: COST_BASIS_METHOD;
   createdAt: Date;

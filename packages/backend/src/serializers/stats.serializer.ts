@@ -286,8 +286,9 @@ export function serializeCumulativeData(cumulative: endpointsTypes.GetCumulative
 
 interface PortfolioValueHistoryItemApiResponse {
   date: string;
-  currentValue: number;
+  currentValue: number | null;
   investedValue: number;
+  projectedValue: number | null;
 }
 
 /**
@@ -298,8 +299,9 @@ export function serializePortfolioValueHistory(
 ): PortfolioValueHistoryItemApiResponse[] {
   return items.map((item) => ({
     date: item.date,
-    currentValue: centsToApiDecimal(item.currentValue),
+    currentValue: item.currentValue != null ? centsToApiDecimal(item.currentValue) : null,
     investedValue: centsToApiDecimal(item.investedValue),
+    projectedValue: item.projectedValue != null ? centsToApiDecimal(item.projectedValue) : null,
   }));
 }
 

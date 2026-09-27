@@ -72,6 +72,9 @@
         "weightedAverage": "Середньозважений",
         "fifo": "FIFO"
       },
+      "visibleSectionsLabel": "Видимі розділи",
+      "enableHoldingsLabel": "Показувати розділ «Активи»",
+      "enableFixedIncomeLabel": "Показувати розділ «Фіксований дохід»",
       "cancelButton": "Скасувати",
       "submitButton": "Зберегти зміни",
       "submitButtonLoading": "Збереження...",

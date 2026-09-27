@@ -9,13 +9,15 @@ export const formatDateKey = (date: Date | string): string => format(date, 'yyyy
 
 export interface PortfolioValueHistoryItem {
   date: string;
-  /** Holdings market value + portfolio cash + fixed-income position value, in base-currency cents. */
-  currentValue: number;
+  /** Holdings market value + portfolio cash + fixed-income position value, in base-currency cents. Null for future dates. */
+  currentValue: number | null;
   /**
    * Cumulative net cash deposited into portfolios (deposits − withdrawals) plus fixed-income
    * cost basis (recognized on each position's initial-investment date), in base-currency cents.
    */
   investedValue: number;
+  /** Projected accrued value and expected maturity amount, in base-currency cents. */
+  projectedValue?: number | null;
 }
 
 export interface CombinedBalanceHistoryItem {
