@@ -8,7 +8,7 @@ const schema = z.object({
   body: z.object({
     name: z.string().min(1, 'Name is required').max(100, 'Name must not exceed 100 characters').trim(),
     note: z.string().max(500, 'Note must not exceed 500 characters').nullish(),
-    transactionIds: uniqueRecordIds({ min: 2, max: 50 }),
+    transactionIds: uniqueRecordIds({ min: 2 }),
   }),
 });
 

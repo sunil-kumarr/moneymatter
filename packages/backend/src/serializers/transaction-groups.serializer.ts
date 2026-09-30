@@ -12,6 +12,8 @@ export interface TransactionGroupApiResponse {
   transactionCount?: number;
   dateFrom?: string | null;
   dateTo?: string | null;
+  incomeAmount?: number;
+  expenseAmount?: number;
   transactions?: TransactionApiResponse[];
 }
 
@@ -25,6 +27,8 @@ interface TransactionGroupInput {
   transactionCount?: number;
   dateFrom?: string | null;
   dateTo?: string | null;
+  incomeAmount?: number;
+  expenseAmount?: number;
 }
 
 export function serializeTransactionGroup(group: TransactionGroupInput): TransactionGroupApiResponse {
@@ -37,6 +41,8 @@ export function serializeTransactionGroup(group: TransactionGroupInput): Transac
     ...(group.transactionCount !== undefined && { transactionCount: group.transactionCount }),
     ...(group.dateFrom !== undefined && { dateFrom: group.dateFrom }),
     ...(group.dateTo !== undefined && { dateTo: group.dateTo }),
+    ...(group.incomeAmount !== undefined && { incomeAmount: group.incomeAmount }),
+    ...(group.expenseAmount !== undefined && { expenseAmount: group.expenseAmount }),
     ...(group.transactions && {
       transactions: group.transactions.map(serializeTransaction),
     }),

@@ -7,6 +7,8 @@ export interface IncomeChartPoint {
   month: string;
   year: number;
   value: number;
+  gross: number;
+  deductions: number;
   isCurrent: boolean;
   isFuture: boolean;
 }
@@ -24,6 +26,8 @@ export function getIncomeChartSeries({
     month: m.month,
     year: m.year,
     value: viewMode === 'monthly' ? m.net : m.cumulativeNet,
+    gross: m.gross,
+    deductions: m.deductions,
     isCurrent: !!m.isCurrent,
     isFuture: !!m.isFuture,
   }));

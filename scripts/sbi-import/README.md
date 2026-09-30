@@ -77,8 +77,27 @@ Columns: `Date, Amount, Description, Category, Tags`
 - `Date` is ISO `YYYY-MM-DD` (avoids the wizard's day/month ambiguity setting).
 - `Amount` is signed (negative = expense, positive = income) — pick
   "determine by amount sign" for transaction type in the wizard.
+- `Description` holds `<Categorized Label> | <Original Bank Narration>` (or the raw
+  narration if uncategorized), preserving both friendly labels and verbatim bank records.
 - `Category` holds exact display names matching the app's existing
   categories; blank means intentionally left uncategorized (mostly
   person-to-person transfers and ambiguous entries) rather than guessed.
 - `Tags` is comma-separated per cell; the wizard's tag-mapping step lets you
   link to existing tags or create new ones for names it hasn't seen before.
+
+## Backfilling original narrations for existing transactions
+
+For transactions that were already imported with only the friendly label:
+
+1. Generate the exact statement-to-CSV 1-to-1 mapping:
+   ```bash
+   .venv/bin/python generate-backfill-mapping.py
+   ```
+2. Run a dry run to inspect the match results and sample diffs:
+   ```bash
+   NODE_PATH=../../node_modules node backfill-sbi-narrations.js
+   ```
+3. Apply the updates atomically to PostgreSQL:
+   ```bash
+   NODE_PATH=../../node_modules node backfill-sbi-narrations.js --apply
+   ```

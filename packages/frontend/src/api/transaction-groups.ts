@@ -10,6 +10,8 @@ export interface TransactionGroupResponse {
   transactionCount?: number;
   dateFrom?: string | null;
   dateTo?: string | null;
+  incomeAmount?: number;
+  expenseAmount?: number;
   transactions?: TransactionModel[];
 }
 

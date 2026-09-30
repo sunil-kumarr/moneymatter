@@ -35,39 +35,51 @@
             </tr>
           </thead>
           <tbody class="divide-border divide-y">
-            <template v-for="credit in credits" :key="credit.id">
-              <tr class="hover:bg-muted/30 cursor-pointer" @click="toggleExpanded(credit.id)">
-                <td class="px-3 py-2.5 text-sm">{{ credit.creditDate }}</td>
+            <template v-for="item in groupedCredits" :key="item.credit.id">
+              <tr v-if="item.isFirstInFY" class="bg-muted/40">
+                <td colspan="6" class="px-3 py-1.5">
+                  <div class="flex items-center justify-between gap-4">
+                    <span class="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+                      {{ item.financialYear }}
+                    </span>
+                    <span class="text-app-income-color text-[11px] font-semibold tabular-nums">
+                      {{ formatCurrency(fyTotals.get(item.financialYear)?.net ?? 0) }}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+              <tr class="hover:bg-muted/30 cursor-pointer" @click="toggleExpanded(item.credit.id)">
+                <td class="px-3 py-2.5 text-sm">{{ item.credit.creditDate }}</td>
                 <td class="px-3 py-2.5 text-sm">
                   <span class="inline-flex items-center gap-1.5">
-                    {{ $t(`income.creditTypes.${credit.creditType}`) }}
-                    <ResponsiveTooltip v-if="credit.links?.length" :delay-duration="100">
+                    {{ $t(`income.creditTypes.${item.credit.creditType}`) }}
+                    <ResponsiveTooltip v-if="item.credit.links?.length" :delay-duration="100">
                       <LinkIcon class="text-success-text size-3.5" />
                       <template #content>{{ $t('income.credits.linkedTransactions.tooltip') }}</template>
                     </ResponsiveTooltip>
                   </span>
                 </td>
                 <td class="px-3 py-2.5 text-right text-sm tabular-nums">
-                  {{ formatCurrency(Number(credit.grossAmount)) }}
+                  {{ formatCurrency(Number(item.credit.grossAmount)) }}
                 </td>
                 <td class="px-3 py-2.5 text-right text-sm tabular-nums">
-                  {{ formatCurrency(Number(credit.totalDeductions)) }}
+                  {{ formatCurrency(Number(item.credit.totalDeductions)) }}
                 </td>
                 <td class="text-app-income-color px-3 py-2.5 text-right text-sm font-semibold tabular-nums">
-                  {{ formatCurrency(Number(credit.netAmount)) }}
+                  {{ formatCurrency(Number(item.credit.netAmount)) }}
                 </td>
                 <td class="px-3 py-2.5 text-right">
                   <ChevronDownIcon
                     class="text-muted-foreground ml-auto size-4 transition-transform"
-                    :class="{ 'rotate-180': expandedId === credit.id }"
+                    :class="{ 'rotate-180': expandedId === item.credit.id }"
                   />
                 </td>
               </tr>
-              <tr v-if="expandedId === credit.id" class="bg-muted/20">
+              <tr v-if="expandedId === item.credit.id" class="bg-muted/20">
                 <td colspan="6" class="px-3 py-3">
                   <div class="grid grid-cols-1 gap-1.5 @sm/income-credits:grid-cols-2">
                     <div
-                      v-for="component in credit.components"
+                      v-for="component in item.credit.components"
                       :key="component.id"
                       class="flex items-center justify-between text-xs"
                     >
@@ -82,9 +94,9 @@
                     <p class="text-muted-foreground mb-1.5 text-[11px] font-medium tracking-wider uppercase">
                       {{ $t('income.credits.linkedTransactions.title') }}
                     </p>
-                    <div v-if="credit.links?.length" class="flex flex-col gap-1">
+                    <div v-if="item.credit.links?.length" class="flex flex-col gap-1">
                       <div
-                        v-for="link in credit.links"
+                        v-for="link in item.credit.links"
                         :key="link.id"
                         class="bg-background flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-xs"
                       >
@@ -103,7 +115,7 @@
                           class="shrink-0"
                           :disabled="unlinkMutation.isPending.value"
                           :aria-label="$t('income.credits.linkedTransactions.unlinkButton')"
-                          @click.stop="handleUnlink(credit.id, link.transactionId)"
+                          @click.stop="handleUnlink(item.credit.id, link.transactionId)"
                         >
                           <UnlinkIcon class="size-3.5" />
                         </UiButton>
@@ -115,13 +127,13 @@
                   </div>
 
                   <div class="mt-3 flex items-center justify-end gap-2">
-                    <LinkTransactionDialog :credit-id="credit.id" :currency-code="currencyCode">
+                    <LinkTransactionDialog :credit-id="item.credit.id" :currency-code="currencyCode">
                       <UiButton variant="outline" size="sm" @click.stop>
                         <LinkIcon class="size-3.5" />
                         {{ $t('income.credits.linkedTransactions.linkButton') }}
                       </UiButton>
                     </LinkTransactionDialog>
-                    <EditSalaryCreditDialog :credit="credit" :currency-code="currencyCode">
+                    <EditSalaryCreditDialog :credit="item.credit" :currency-code="currencyCode">
                       <UiButton variant="outline" size="sm" @click.stop>
                         <PencilIcon class="size-3.5" />
                         {{ $t('income.credits.editButton') }}
@@ -131,7 +143,7 @@
                       :source-id="sourceId"
                       :currency-code="currencyCode"
                       :component-template="componentTemplate"
-                      :duplicate-from="credit"
+                      :duplicate-from="item.credit"
                     >
                       <UiButton variant="outline" size="sm" @click.stop>
                         <CopyIcon class="size-3.5" />
@@ -143,7 +155,7 @@
                       size="sm"
                       class="text-destructive-text"
                       :disabled="deleteMutation.isPending.value"
-                      @click.stop="handleDelete(credit.id)"
+                      @click.stop="handleDelete(item.credit.id)"
                     >
                       <Trash2Icon class="size-3.5" />
                       {{ $t('income.credits.deleteButton') }}
@@ -174,7 +186,7 @@ import { captureException } from '@/lib/sentry';
 import type { IncomeComponentTemplateItem } from '@bt/shared/types/income';
 import { ChevronDownIcon, CopyIcon, LinkIcon, PencilIcon, PlusIcon, Trash2Icon, UnlinkIcon } from '@lucide/vue';
 import { format } from 'date-fns';
-import { ref, toRef } from 'vue';
+import { ref, computed, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import CreateSalaryCreditDialog from './create-salary-credit-dialog.vue';
@@ -189,6 +201,43 @@ const props = defineProps<{
 
 const sourceId = toRef(props, 'sourceId');
 const { data: credits, isLoading } = useIncomeCredits(sourceId);
+
+/** Returns the Indian Financial Year string (e.g. 'FY 2024-25') for a YYYY-MM-DD date string. */
+const getCreditFinancialYear = (creditDate: string): string => {
+  const [yearStr, monthStr] = creditDate.split('-');
+  const year = parseInt(yearStr!, 10);
+  const month = parseInt(monthStr!, 10); // 1-based
+  if (month >= 4) {
+    return `FY ${year}-${String(year + 1).slice(-2)}`;
+  }
+  return `FY ${year - 1}-${String(year).slice(-2)}`;
+};
+
+/** Net / gross / deduction totals keyed by FY string, e.g. 'FY 2024-25'. */
+const fyTotals = computed(() => {
+  const map = new Map<string, { net: number; gross: number; deductions: number }>();
+  for (const credit of credits.value ?? []) {
+    const fy = getCreditFinancialYear(credit.creditDate);
+    const existing = map.get(fy) ?? { net: 0, gross: 0, deductions: 0 };
+    map.set(fy, {
+      net: existing.net + Number(credit.netAmount),
+      gross: existing.gross + Number(credit.grossAmount),
+      deductions: existing.deductions + Number(credit.totalDeductions),
+    });
+  }
+  return map;
+});
+
+const groupedCredits = computed(() => {
+  if (!credits.value) return [];
+  let lastFY = '';
+  return credits.value.map((credit) => {
+    const financialYear = getCreditFinancialYear(credit.creditDate);
+    const isFirstInFY = financialYear !== lastFY;
+    lastFY = financialYear;
+    return { credit, financialYear, isFirstInFY };
+  });
+});
 
 const { t } = useI18n();
 const { addNotification } = useNotificationCenter();

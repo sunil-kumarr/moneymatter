@@ -47,6 +47,33 @@ describe('computeIncomeMetrics', () => {
     expect(metrics.lastRaisePct).toBe(10);
   });
 
+  it('compares YoY net against the same elapsed portion of the previous FY, not the full previous FY', () => {
+    const metrics = computeIncomeMetrics({
+      credits: [
+        // Prev FY (2023-24): full year of credits, 60000 net/month.
+        credit({ creditDate: '2023-04-05', net: 60000 }),
+        credit({ creditDate: '2023-05-05', net: 60000 }),
+        credit({ creditDate: '2023-06-05', net: 60000 }),
+        credit({ creditDate: '2023-07-05', net: 60000 }),
+        credit({ creditDate: '2023-08-05', net: 60000 }),
+        credit({ creditDate: '2023-09-05', net: 60000 }),
+        credit({ creditDate: '2023-10-05', net: 60000 }),
+        credit({ creditDate: '2023-11-05', net: 60000 }),
+        credit({ creditDate: '2023-12-05', net: 60000 }),
+        credit({ creditDate: '2024-01-05', net: 60000 }),
+        credit({ creditDate: '2024-02-05', net: 60000 }),
+        credit({ creditDate: '2024-03-05', net: 60000 }),
+        // Current FY (2024-25) to date: same two months, same net.
+        credit({ creditDate: '2024-04-05', net: 60000 }),
+        credit({ creditDate: '2024-05-05', net: 60000 }),
+      ],
+      now: new Date('2024-06-01T00:00:00Z'),
+    });
+
+    // Flat YoY, not the ~-83% a full-previous-FY comparison would produce.
+    expect(metrics.yoyGrowthPct).toBe(0);
+  });
+
   it('ignores bonus/arrears credits when detecting a raise', () => {
     const metrics = computeIncomeMetrics({
       credits: [

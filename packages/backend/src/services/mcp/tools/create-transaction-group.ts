@@ -8,7 +8,7 @@ import { getUserId, jsonContent, requireScope } from './helpers';
 
 const inputSchema = {
   name: z.string().describe('Display name for the group'),
-  transactionIds: z.array(recordId()).describe('IDs of transactions to include in the group (minimum 2, maximum 50)'),
+  transactionIds: z.array(recordId()).describe('IDs of transactions to include in the group (minimum 2)'),
   note: z.string().optional().describe('Optional note or description for the group'),
 };
 

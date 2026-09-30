@@ -4,7 +4,7 @@ import TransactionGroupItems from '@models/transaction-group-items.model';
 import TransactionGroups from '@models/transaction-groups.model';
 import { withTransaction } from '@services/common/with-transaction';
 
-import { MIN_GROUP_SIZE, MAX_GROUP_SIZE, INCLUDE_GROUP_TRANSACTIONS } from './constants';
+import { MIN_GROUP_SIZE, INCLUDE_GROUP_TRANSACTIONS } from './constants';
 import { resolveTransferPairs } from './resolve-transfer-pairs';
 import { validateTransactionsForGroup } from './validate-transactions-for-group';
 
@@ -21,9 +21,9 @@ export const createTransactionGroup = withTransaction(async (payload: CreateTran
   // Auto-include opposite sides of transfer pairs
   const expandedIds = await resolveTransferPairs({ transactionIds, userId });
 
-  if (expandedIds.length < MIN_GROUP_SIZE || expandedIds.length > MAX_GROUP_SIZE) {
+  if (expandedIds.length < MIN_GROUP_SIZE) {
     throw new ValidationError({
-      message: `A group must contain between ${MIN_GROUP_SIZE} and ${MAX_GROUP_SIZE} transactions.`,
+      message: `A group must contain at least ${MIN_GROUP_SIZE} transactions.`,
     });
   }
 

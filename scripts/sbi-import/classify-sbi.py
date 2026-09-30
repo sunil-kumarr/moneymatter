@@ -308,13 +308,18 @@ def classify(t, name_counts):
             note = details[:190]
             payment_type = "bankTransfer"
 
+    if note and note != details and not details.startswith(note) and details not in note:
+        final_note = f"{note} | {details}"
+    else:
+        final_note = note or details[:190]
+
     payload = {
         "amount": amount,
         "transactionType": tx_type,
         "paymentType": payment_type,
         "transferNature": "not_transfer",
         "time": to_iso(t["date"]),
-        "note": note,
+        "note": final_note,
     }
     if category_key:
         payload["categoryId"] = CAT[category_key]

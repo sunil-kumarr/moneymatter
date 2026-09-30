@@ -4,6 +4,7 @@ import type Securities from '@models/investments/securities.model';
 import { FmpClient, type FmpSearchResult } from '@root/services/investments/data-providers/clients/fmp-client';
 import { createManualPrice as _createManualPrice } from '@root/services/investments/securities-price/create-manual-price.service';
 import { addSecurityFromSearch } from '@root/services/investments/securities/add-from-search.service';
+import { createManualSecurity as _createManualSecurity } from '@root/services/investments/securities/create-manual-security.service';
 import * as getSecuritiesService from '@root/services/investments/securities/get-all';
 import { searchSecurities as _searchSecurities } from '@root/services/investments/securities/search.service';
 
@@ -101,6 +102,21 @@ export async function seedSecurities(securitiesToSeed: SeedSecurityPayload[]) {
   );
 
   return createdSecurities;
+}
+
+export async function createManualSecurity<R extends boolean | undefined = false>({
+  payload,
+  raw,
+}: {
+  payload: Parameters<typeof _createManualSecurity>[0];
+  raw?: R;
+}) {
+  return makeRequest<Awaited<ReturnType<typeof _createManualSecurity>>, R>({
+    method: 'post',
+    url: '/investments/securities/manual',
+    payload,
+    raw,
+  });
 }
 
 export async function createManualPrice<R extends boolean | undefined = false>({

@@ -1,12 +1,11 @@
 import type { RecordId } from '@bt/shared/types';
 import { findOrThrowNotFound } from '@common/utils/find-or-throw-not-found';
-import { ValidationError } from '@js/errors';
 import TransactionGroupItems from '@models/transaction-group-items.model';
 import TransactionGroups from '@models/transaction-groups.model';
 import { withTransaction } from '@services/common/with-transaction';
 import { Op } from 'sequelize';
 
-import { MAX_GROUP_SIZE, INCLUDE_GROUP_TRANSACTIONS } from './constants';
+import { INCLUDE_GROUP_TRANSACTIONS } from './constants';
 import { resolveTransferPairs } from './resolve-transfer-pairs';
 import { validateTransactionsForGroup } from './validate-transactions-for-group';
 
@@ -46,17 +45,6 @@ export const addTransactionsToGroup = withTransaction(async (payload: AddTransac
   }
 
   await validateTransactionsForGroup({ transactionIds: newIds, userId });
-
-  // Check group size limit
-  const currentCount = await TransactionGroupItems.count({
-    where: { groupId },
-  });
-
-  if (currentCount + newIds.length > MAX_GROUP_SIZE) {
-    throw new ValidationError({
-      message: `Adding these transactions would exceed the maximum group size of ${MAX_GROUP_SIZE}.`,
-    });
-  }
 
   const items = newIds.map((transactionId) => ({
     groupId,

@@ -7,6 +7,9 @@ export enum SECURITY_PROVIDER {
   // custom provider that uses others for different operations because each provider
   // has limitations on a free plan
   composite = 'composite',
+  // user-entered security with no market-data integration (e.g. NPS scheme
+  // funds not indexed by any search provider) — priced via create-manual-price
+  manual = 'manual',
 }
 
 export enum ASSET_CLASS {

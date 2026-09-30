@@ -1,5 +1,6 @@
 import { INCOME_CREDIT_TYPE } from '@bt/shared/types/income';
-import { getFinancialYear } from '@services/common/financial-year';
+import { getFinancialYear, getFinancialYearRange } from '@services/common/financial-year';
+import { addDays, differenceInCalendarDays } from 'date-fns';
 
 export interface IncomeMetricCredit {
   creditDate: string;
@@ -75,12 +76,27 @@ export function computeIncomeMetrics({
   const latestRegular = regularCredits.at(-1);
   const annualRunRateNet = round2((latestRegular?.net ?? avgMonthlyNet) * 12);
 
+  // Compare net income so far this FY against the SAME elapsed portion of the previous FY
+  // (not the previous FY's full 12 months) — otherwise a partial current year always looks
+  // like a decline against a complete prior year.
+  const fyRange = getFinancialYearRange(fyLabel);
   const prevFyLabel = getFinancialYear(new Date(now.getFullYear() - 1, now.getMonth(), 1));
-  const prevFyCredits = sorted.filter(
-    (c) => getFinancialYear(new Date(`${c.creditDate}T00:00:00.000Z`)) === prevFyLabel,
-  );
-  const prevFyNet = round2(prevFyCredits.reduce((acc, c) => acc + c.net, 0));
-  const yoyGrowthPct = prevFyNet > 0 ? round2(((fyNet - prevFyNet) / prevFyNet) * 100) : null;
+  const prevFyRange = getFinancialYearRange(prevFyLabel);
+
+  let yoyGrowthPct: number | null = null;
+  if (fyRange && prevFyRange) {
+    const daysElapsedInFy = differenceInCalendarDays(now, fyRange.start);
+    const prevFyToDateEnd = addDays(prevFyRange.start, daysElapsedInFy);
+    const prevFyToDateNet = round2(
+      sorted
+        .filter((c) => {
+          const creditDate = new Date(`${c.creditDate}T00:00:00.000Z`);
+          return creditDate >= prevFyRange.start && creditDate <= prevFyToDateEnd;
+        })
+        .reduce((acc, c) => acc + c.net, 0),
+    );
+    yoyGrowthPct = prevFyToDateNet > 0 ? round2(((fyNet - prevFyToDateNet) / prevFyToDateNet) * 100) : null;
+  }
 
   let lastRaiseDate: string | null = null;
   let lastRaiseAmount: number | null = null;

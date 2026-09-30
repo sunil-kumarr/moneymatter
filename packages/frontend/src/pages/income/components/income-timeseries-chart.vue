@@ -103,11 +103,24 @@
             <g v-for="(point, i) in chartPoints" :key="point.dateKey">
               <rect
                 v-if="viewMode === 'monthly' && point.value !== 0"
-                :x="getBarX(point)"
+                :x="getNetBarX(point)"
                 :y="getBarY(point.value)"
-                :width="barWidth"
+                :width="getNetBarWidth(point)"
                 :height="getBarHeight(point.value)"
                 :fill="point.value >= 0 ? barPositiveColor : barNegativeColor"
+                rx="3"
+                ry="3"
+                class="transition-opacity duration-150"
+                :class="{ 'opacity-80': hoveredIndex !== null && hoveredIndex !== i }"
+              />
+
+              <rect
+                v-if="viewMode === 'monthly' && point.deductions > 0"
+                :x="getDeductionBarX(point)"
+                :y="getBarY(point.deductions)"
+                :width="deductionBarWidth"
+                :height="getBarHeight(point.deductions)"
+                :fill="barNegativeColor"
                 rx="3"
                 ry="3"
                 class="transition-opacity duration-150"
@@ -289,13 +302,27 @@ const xScale = computed(() => {
 });
 
 const barWidth = computed(() => Math.min(22, Math.max(6, xScale.value.bandwidth() * 0.75)));
+const BAR_PAIR_GAP = 2;
+const deductionBarWidth = computed(() => Math.max(4, barWidth.value * 0.55));
 
 const getColumnCenterX = (dateKey: string) => (xScale.value(dateKey) ?? 0) + xScale.value.bandwidth() / 2;
 
-const getBarX = (point: IncomeChartPoint) => getColumnCenterX(point.dateKey) - barWidth.value / 2;
+/** When a month has a deduction, the net bar shrinks and shifts left to make room for the red deduction bar beside it. */
+const getNetBarWidth = (point: IncomeChartPoint) => (point.deductions > 0 ? deductionBarWidth.value : barWidth.value);
+
+const getNetBarX = (point: IncomeChartPoint) => {
+  const centerX = getColumnCenterX(point.dateKey);
+  if (point.deductions > 0) {
+    return centerX - deductionBarWidth.value - BAR_PAIR_GAP / 2;
+  }
+  return centerX - barWidth.value / 2;
+};
+
+const getDeductionBarX = (point: IncomeChartPoint) => getColumnCenterX(point.dateKey) + BAR_PAIR_GAP / 2;
 
 const yScale = computed(() => {
-  const [yMin, yMax] = computeIncomeYDomain(chartPoints.value.map((p) => p.value));
+  const values = chartPoints.value.flatMap((p) => (viewMode.value === 'monthly' ? [p.value, p.deductions] : [p.value]));
+  const [yMin, yMax] = computeIncomeYDomain(values);
   return d3.scaleLinear().domain([yMin, yMax]).range([innerHeight.value, 0]);
 });
 
